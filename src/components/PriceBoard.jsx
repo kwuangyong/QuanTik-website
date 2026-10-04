@@ -1,126 +1,30 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { getBoard } from '../api.js';
-import { demoRows } from '../demo.js';
-
-const GROUPS = [['HOSE', 'HOSE'], ['VN30', 'VN30'], ['WATCH', 'WATCHLIST']];
-const fmt = (x, d = 2) => (x == null ? '–' : x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
-const cls = (p, r) => (p >= r.ceil - 1e-9 ? 'ceil' : p <= r.floor + 1e-9 ? 'floor' : p > r.ref + 1e-9 ? 'up' : p < r.ref - 1e-9 ? 'down' : 'ref');
-const scoreCls = (s) => (s >= 70 ? 's-hi' : s >= 50 ? 's-mid' : 's-lo');
-
-export function Spark({ v = [] }) {
-  if (v.length < 2) return null;
-  const mn = Math.min(...v), mx = Math.max(...v);
-  const pts = v.map((x, i) => `${(i / (v.length - 1)) * 64},${18 - ((x - mn) / (mx - mn || 1)) * 16}`).join(' ');
-  return (
-    <svg viewBox="0 0 64 20" aria-hidden="true">
-      <polyline points={pts} fill="none" stroke={`var(--${v.at(-1) >= v[0] ? 'up' : 'down'})`} strokeWidth="1.4" />
-    </svg>
-  );
-}
-
-export default function PriceBoard({ section, onOpen, onQuant }) {
-  const [group, setGroup] = useState('HOSE');
-  const [rows, setRows] = useState(demoRows);
-  const [source, setSource] = useState('preview');
-  useEffect(() => { setGroup(section === 'watch' ? 'WATCH' : 'HOSE'); }, [section]);
-  const [q, setQ] = useState('');
-  const [selected, setSelected] = useState('FPT');
-  const [sort, setSort] = useState({ k: 'sym', d: 1 });
-  const [watch, setWatch] = useState(() => (() => { try { return new Set(JSON.parse(localStorage.getItem('qt.watch') || '["FPT","HPG","MWG"]')); } catch { return new Set(); } })());
-  const [flash, setFlash] = useState({});
-  const prev = useRef({});
-  const [err, setErr] = useState('');
-
-  // Poll bảng giá 5 giây/lần. Khi có streaming (SSI/VPS websocket) thì thay bằng WebSocket.
-  useEffect(() => {
-    let stop = false;
-    const load = async () => {
-      try {
-        const data = await getBoard(group === 'WATCH' ? 'HOSE' : group);
-        if (stop) return;
-        const f = {};
-        data.forEach((r) => { const p = prev.current[r.sym]; if (p != null && p !== r.price) f[r.sym] = r.price > p ? 'flash-up' : 'flash-dn'; prev.current[r.sym] = r.price; });
-        setFlash(f); setRows(data); setSource('api'); setErr('');
-      } catch (e) { if (!stop) setErr('FEED OFFLINE — Đang hiển thị mẫu tĩnh. Python API chưa kết nối.'); }
-    };
-    load();
-    const t = setInterval(load, 5000);
-    return () => { stop = true; clearInterval(t); };
-  }, [group]);
-
-  useEffect(() => localStorage.setItem('qt.watch', JSON.stringify([...watch])), [watch]);
-
-  const view = useMemo(() => {
-    const a = rows.filter((r) => (group === 'WATCH' ? watch.has(r.sym) : group === 'VN30' ? r.sym !== 'HHP' : true) && (!q || `${r.sym} ${r.name}`.toLocaleLowerCase('vi').includes(q.trim().toLocaleLowerCase('vi'))));
-    const val = (r) => (sort.k === 'chg' ? r.price - r.ref : r[sort.k]);
-    return a.sort((x, y) => (typeof val(x) === 'string' ? val(x).localeCompare(val(y)) : val(x) - val(y)) * sort.d);
-  }, [rows, group, q, sort, watch]);
-
-  const th = (k, label, hide) => (
-    <th key={k} className={hide ? 'hide-sm' : ''} onClick={() => setSort((s) => (s.k === k ? { k, d: -s.d } : { k, d: k === 'sym' ? 1 : -1 }))} data-sorted={sort.k === k || undefined}>
-      {label}{sort.k === k ? (sort.d > 0 ? ' ▲' : ' ▼') : ''}
-    </th>
-  );
-
-  const rising = rows.filter(r => r.price > r.ref).length;
-  const falling = rows.filter(r => r.price < r.ref).length;
-  const leaders = [...rows].sort((a,b) => (b.score ?? -1)-(a.score ?? -1)).slice(0,5);
-  const current = rows.find(r=>r.sym===selected) || rows[0];
-  return (
-    <>
-      <div className="market-strip"><b>VN EQUITIES</b><span>TẬP MÃ <strong>{rows.length}</strong></span><span className="up">TĂNG {rising}</span><span className="down">GIẢM {falling}</span><span className="ref">ĐỨNG {rows.length-rising-falling}</span><span className="strip-end">{source === 'api' && !err ? 'API / SIMULATED' : 'OFFLINE / SAMPLE'}</span></div>
-      <section className="market-panel"><div className="window-title"><b>01 / EQUITY MONITOR</b><span>GIÁ: 1.000 VNĐ · KHỐI LƯỢNG: CP · QUANT: /100</span></div>
-      <div className="toolbar">
-        <div className="tabs" role="tablist">
-          {GROUPS.map(([k, l]) => <button key={k} className="tab" role="tab" aria-selected={group === k} onClick={() => setGroup(k)}>{l}</button>)}
-        </div>
-        <label className="search"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="LỌC MÃ / DOANH NGHIỆP" aria-label="Tìm mã" /></label>
-      </div>
-      
-      {err && <p className="err">{err}</p>}
-      <div className="boardwrap">
-        <table>
-          <thead><tr>
-            {th('sym', 'MÃ')}<th className="company-col">DOANH NGHIỆP</th>{th('ceil', 'Trần', 1)}{th('floor', 'Sàn', 1)}{th('ref', 'TC')}{th('price', 'Giá')}{th('chg', '+/−')}{th('vol', 'Khối lượng', 1)}
-            <th className="hide-sm">30 phiên</th>{th('score', 'QUANT')}<th />
-          </tr></thead>
-          <tbody>
-            {!view.length && <tr><td colSpan={11}><div className="empty"><b>{group === 'WATCH' ? 'Chưa có mã theo dõi phù hợp' : 'Không tìm thấy cổ phiếu'}</b><p>{group === 'WATCH' ? 'Bấm ngôi sao cạnh mã trong bảng giá để thêm vào danh sách.' : 'Thử tìm bằng mã hoặc tên doanh nghiệp khác.'}</p></div></td></tr>}
-            {view.map((r) => {
-              const c = cls(r.price, r), d = r.price - r.ref;
-              return (
-                <tr key={r.sym} className={current?.sym === r.sym ? 'selected' : ''} tabIndex={0} onClick={() => setSelected(r.sym)} onDoubleClick={() => onOpen(r.sym)} onKeyDown={(e) => e.target === e.currentTarget && e.key === 'Enter' && onOpen(r.sym)}>
-                  <td className="sym">
-                    <button className="star" aria-pressed={watch.has(r.sym)} aria-label={`Theo dõi ${r.sym}`}
-                      onClick={(e) => { e.stopPropagation(); setWatch((w) => { const n = new Set(w); n.has(r.sym) ? n.delete(r.sym) : n.add(r.sym); return n; }); }}>
-                      {watch.has(r.sym) ? '★' : '☆'}
-                    </button>
-                    <span className={c}>{r.sym}</span>
-                    
-                  </td>
-                  <td className="company-col company-name">{r.name || r.sym}</td>
-                  <td className="hide-sm ceil">{fmt(r.ceil)}</td><td className="hide-sm floor">{fmt(r.floor)}</td><td className="ref">{fmt(r.ref)}</td>
-                  <td className={`price ${c} ${flash[r.sym] || ''}`}>{fmt(r.price)}</td>
-                  <td className={c}>{d >= 0 ? '+' : ''}{fmt(d)} ({(d / r.ref * 100).toFixed(2)}%)</td>
-                  <td className="hide-sm">{r.vol?.toLocaleString('en-US')}</td>
-                  <td className="hide-sm spark"><Spark v={r.spark} /></td>
-                  <td>{r.score != null && <span className={`score ${scoreCls(r.score)}`} title="Điểm mô phỏng">{r.score}</span>}</td>
-                  <td><button className="qbtn" onClick={(e) => { e.stopPropagation(); onQuant(r.sym); }}>QUANT ›</button></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-      <div className="table-footer"><span>{view.length} cổ phiếu · {group === 'WATCH' ? 'Danh sách cá nhân' : group}</span><span>Dữ liệu mô phỏng phục vụ xem giao diện</span></div></section>
-      <div className="terminal-lower">
-        <section className="detail-window"><div className="window-title"><b>02 / SECURITY DETAIL</b><span>{current?.sym || '—'} EQUITY</span></div>{current && <>
-          <div className="security-heading"><b>{current.sym}</b><span>{current.name || 'HOSE'}</span><strong className={cls(current.price,current)}>{fmt(current.price)}</strong><button onClick={()=>onOpen(current.sym)}>CHART ↗</button></div>
-          <div className="detail-body"><div className="history-chart"><span>30 PHIÊN / MÔ PHỎNG</span><Spark v={current.spark}/><div className="chart-axis"><span>T−29</span><span>T−15</span><span>T</span></div></div><dl><div><dt>THAM CHIẾU</dt><dd className="ref">{fmt(current.ref)}</dd></div><div><dt>THAY ĐỔI</dt><dd className={cls(current.price,current)}>{fmt((current.price/current.ref-1)*100)}%</dd></div><div><dt>KHỐI LƯỢNG</dt><dd>{fmt(current.vol,0)}</dd></div><div><dt>QUANT SCORE</dt><dd className="amber">{current.score ?? '—'} / 100</dd></div></dl></div>
-        </>}</section>
-        <section className="ranking-window"><div className="window-title"><b>03 / QUANT RANKING</b><span>DEMO</span></div><div className="ranking-head"><span>MÃ</span><span>ĐIỂM</span><span>Δ %</span></div>{leaders.map(r=><button className="ranking-row" key={r.sym} onClick={()=>{setSelected(r.sym);}}><b>{r.sym}</b><span className="amber">{r.score}</span><span className={cls(r.price,r)}>{fmt((r.price/r.ref-1)*100)}%</span></button>)}</section>
-        <section className="system-window"><div className="window-title"><b>04 / SESSION</b><span>STATUS</span></div><dl><div><dt>NGUỒN GIÁ</dt><dd className="amber">{source === 'api' && !err ? 'DEMO API' : 'LOCAL SAMPLE'}</dd></div><div><dt>PYTHON API</dt><dd className={err ? 'down' : 'ref'}>{err ? 'OFFLINE' : source === 'api' ? 'CONNECTED' : 'CONNECTING'}</dd></div><div><dt>CHU KỲ POLL</dt><dd>5 SEC</dd></div><div><dt>WATCHLIST</dt><dd>{watch.size} SYMBOLS</dd></div></dl><p>Chọn dòng: xem chi tiết<br/>Bấm đúp / Enter: biểu đồ<br/>QUANT: mở phân tích mô hình</p></section>
-      </div>
-    </>
-  );
+import {useEffect,useMemo,useState} from 'react';
+import useMarket from '../hooks/useMarket.js';
+import {sectors,sectorName,fmt,change,priceClass} from '../market.js';
+import PriceBoardTable from './PriceBoardTable.jsx';
+import SectorBoard from './SectorBoard.jsx';
+import TermHint from './TermHint.jsx';
+export function Spark({v=[]}){if(v.length<2)return null;const mn=Math.min(...v),mx=Math.max(...v);return <svg viewBox="0 0 64 20" aria-hidden="true"><polyline points={v.map((x,i)=>`${i/(v.length-1)*64},${18-(x-mn)/(mx-mn||1)*16}`).join(' ')} fill="none" stroke={`var(--${v.at(-1)>=v[0]?'up':'down'})`} strokeWidth="1.4"/></svg>;}
+export default function PriceBoard({section,onOpen,onQuant}){
+ const {snapshot,rows,status,isStale,flash}=useMarket();
+ const [exchange,setExchange]=useState('ALL'),[sector,setSector]=useState('ALL'),[q,setQ]=useState(''),[selected,setSelected]=useState('FPT'),[sort,setSort]=useState({k:'symbol',d:1}),[mode,setMode]=useState('overview');
+ const [book,setBook]=useState(()=>window.innerWidth>600),[stats,setStats]=useState(true),[foreign,setForeign]=useState(false),[dense,setDense]=useState(true);
+ const [watch,setWatch]=useState(()=>{try{return new Set(JSON.parse(localStorage.getItem('qt.watch')||'["FPT","HPG","MWG"]'));}catch{return new Set();}});
+ useEffect(()=>{try{localStorage.setItem('qt.watch',JSON.stringify([...watch]));}catch{}},[watch]);
+ useEffect(()=>{if(section==='board')setMode('board');},[section]);
+ const toggleWatch=sym=>setWatch(w=>{const n=new Set(w);n.has(sym)?n.delete(sym):n.add(sym);return n;});
+ const onSort=k=>setSort(s=>s.k===k?{k,d:-s.d}:{k,d:k==='symbol'?1:-1});
+ const filtered=useMemo(()=>rows.filter(r=>(exchange==='ALL'||r.exchange===exchange)&&(sector==='ALL'||r.sectorId===sector)&&(section!=='watch'||watch.has(r.symbol))&&`${r.symbol} ${r.name}`.toLocaleLowerCase('vi').includes(q.trim().toLocaleLowerCase('vi'))),[rows,exchange,sector,section,watch,q]);
+ const view=useMemo(()=>[...filtered].sort((a,b)=>{const v=r=>sort.k==='change'?change(r):r[sort.k];const x=v(a),y=v(b);if(x==null)return y==null?0:1;if(y==null)return -1;return (typeof x==='string'?x.localeCompare(y):x-y)*sort.d;}),[filtered,sort]);
+ const current=view.find(r=>r.symbol===selected)||view[0],valid=filtered.map(change).filter(v=>v!=null),rising=valid.filter(v=>v>0).length,falling=valid.filter(v=>v<0).length,leaders=[...filtered].filter(r=>r.score!=null).sort((a,b)=>b.score-a.score).slice(0,5);
+ const time=snapshot.asOf?new Date(snapshot.asOf).toLocaleString('vi-VN',{timeZone:'Asia/Ho_Chi_Minh'}):'Chưa xác nhận';
+ const header=(k,label)=><th aria-sort={sort.k===k?(sort.d===1?'ascending':'descending'):'none'}><button className="sort-button" onClick={()=>onSort(k)}>{label}{sort.k===k?(sort.d===1?' ↑':' ↓'):''}</button></th>;
+ return <><div className="market-strip"><article className="metric"><div className="metric-top">Mã trong bộ lọc</div><strong>{filtered.length}</strong><small>{exchange==='ALL'?'Ba sàn (mẫu)':exchange} · {sector==='ALL'?'Tất cả ngành':sectorName(sector)}</small></article><article className="metric"><div className="metric-top">Cổ phiếu tăng</div><strong className="up">{rising}</strong><small>{valid.length?Math.round(rising/valid.length*100):0}% số mã có giá</small></article><article className="metric"><div className="metric-top">Cổ phiếu giảm</div><strong className="down">{falling}</strong><small>{valid.length-rising-falling} mã đứng giá</small></article><article className="metric"><div className="metric-top">Điểm Quant cao nhất</div><strong className="amber">{leaders[0]?.score??'—'}<small> /100</small></strong><small>{leaders[0]?.symbol||'—'} · {snapshot.mode==='demo'?'Mô phỏng':'Theo nguồn API'}</small></article></div>
+ <div className="data-banner" role="status"><b>{snapshot.mode==='demo'?'DỮ LIỆU MÔ PHỎNG':snapshot.mode==='live'?'Theo nguồn: LIVE':snapshot.mode==='delayed'?'Theo nguồn: CÓ ĐỘ TRỄ':snapshot.mode==='eod'?'Dữ liệu cuối ngày':'Nguồn chưa xác nhận'}</b><span>{snapshot.source} · {time}</span>{isStale&&<span className="down">Mất kết nối · Giữ snapshot gần nhất / mẫu tĩnh</span>}</div>
+ <div className="market-filters"><label>Sàn <select aria-label="Lọc sàn" value={exchange} onChange={e=>setExchange(e.target.value)}>{['ALL','HOSE','HNX','UPCOM'].map(x=><option key={x} value={x}>{x==='ALL'?'Tất cả sàn':x==='UPCOM'?'UPCoM':x}</option>)}</select></label><label>Ngành <select aria-label="Lọc ngành" value={sector} onChange={e=>setSector(e.target.value)}><option value="ALL">Tất cả ngành</option>{sectors.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label><label className="search"><input aria-label="Tìm mã" placeholder="Tìm mã hoặc doanh nghiệp…" value={q} onChange={e=>setQ(e.target.value)}/></label><button className="btn ghost" onClick={()=>{setExchange('ALL');setSector('ALL');setQ('');}}>Xóa lọc</button></div>
+ {section==='sectors'&&<SectorBoard rows={filtered} onSector={id=>{setSector(id);setMode('board');}}/>}
+ <section className="market-panel"><div className="window-title"><b>{section==='watch'?'Danh sách theo dõi':sector!=='ALL'?sectorName(sector):'Bảng giá cổ phiếu'}</b><span>Giá: 1.000 ₫ · KL: cổ phiếu</span></div><div className="toolbar"><div className="tabs"><button className="tab" aria-pressed={mode==='overview'} onClick={()=>setMode('overview')}>Tổng quan</button><button className="tab" aria-pressed={mode==='board'} onClick={()=>setMode('board')}>Bảng điện</button></div>{mode==='board'&&<div className="column-options"><label><input type="checkbox" checked={book} onChange={e=>setBook(e.target.checked)}/> Dư mua/bán</label><label><input type="checkbox" checked={stats} onChange={e=>setStats(e.target.checked)}/> Thống kê</label><label><input type="checkbox" checked={foreign} onChange={e=>setForeign(e.target.checked)}/> Nước ngoài</label><label><input type="checkbox" checked={dense} onChange={e=>setDense(e.target.checked)}/> Thu gọn</label></div>}</div>
+ {mode==='board'?<PriceBoardTable rows={view} watch={watch} toggleWatch={toggleWatch} onOpen={onOpen} onSelect={setSelected} onQuant={onQuant} selected={current?.symbol} sort={sort} onSort={onSort} book={book} stats={stats} foreign={foreign} dense={dense} flash={flash}/>:<div className="boardwrap"><table><thead><tr>{header('symbol','Mã')}<th className="company-col">Doanh nghiệp</th><th>Sàn / Ngành</th>{header('price','Giá')}{header('change','+/− %')}{header('vol','Tổng KL')}<th>30 phiên</th>{header('score','QUANT')}<th/></tr></thead><tbody>{!view.length&&<tr><td colSpan={9}><div className="empty">Không có mã phù hợp. Thử xóa bộ lọc hoặc thêm mã vào theo dõi.</div></td></tr>}{view.map(r=><tr key={r.symbol} tabIndex={0} className={current?.symbol===r.symbol?'selected':''} onClick={()=>setSelected(r.symbol)} onDoubleClick={()=>onOpen(r.symbol)} onKeyDown={e=>e.target===e.currentTarget&&e.key==='Enter'&&onOpen(r.symbol)}><td className="sym"><button className="star" aria-label={`Theo dõi ${r.symbol}`} aria-pressed={watch.has(r.symbol)} onClick={e=>{e.stopPropagation();toggleWatch(r.symbol);}}>{watch.has(r.symbol)?'★':'☆'}</button><button className="symbol-link" onClick={e=>{e.stopPropagation();onOpen(r.symbol);}}>{r.symbol}</button></td><td className="company-col company-name">{r.name}</td><td className="company-name">{r.exchange} · {sectorName(r.sectorId)}</td><td className={`price ${priceClass(r.price,r)} ${flash[r.symbol]||''}`}>{fmt(r.price==null?null:r.price/1000)}</td><td className={priceClass(r.price,r)}>{change(r)==null?'—':`${change(r)>=0?'+':''}${fmt(change(r)*100)}%`}</td><td>{fmt(r.vol,0)}</td><td className="spark"><Spark v={r.spark}/></td><td><TermHint id="quant_score"><span className={`score ${r.score>=70?'s-hi':'s-mid'}`}>{r.score??'—'}</span></TermHint></td><td><button className="qbtn" onClick={e=>{e.stopPropagation();onQuant(r.symbol);}}>QUANT ›</button></td></tr>)}</tbody></table></div>}
+ <div className="table-footer"><span>{view.length} mã · Danh mục {snapshot.mode==='demo'?'minh họa':'theo API'}</span><span>Nhấp mã để xem chart · Không phải danh mục VN30 chính thức</span></div></section>
+ <div className="terminal-lower"><section className="detail-window"><div className="window-title"><b>Chi tiết cổ phiếu</b><span>{current?.exchange||'—'}</span></div>{current?<><div className="security-heading"><b>{current.symbol}</b><span>{current.name}</span><strong className={priceClass(current.price,current)}>{fmt(current.price/1000)}</strong><button onClick={()=>onOpen(current.symbol)}>Biểu đồ ↗</button></div><div className="detail-body"><div className="history-chart"><span>30 PHIÊN · {snapshot.mode==='demo'?'MẪU':'THEO NGUỒN'}</span><Spark v={current.spark}/></div><dl><div><dt><TermHint id="ref"/></dt><dd>{fmt(current.ref/1000)}</dd></div><div><dt>TỔNG KHỐI LƯỢNG</dt><dd>{fmt(current.vol,0)}</dd></div><div><dt><TermHint id="quant_score"/></dt><dd>{current.score??'—'}</dd></div></dl></div></>:<p className="empty">Không có cổ phiếu trong bộ lọc.</p>}</section><section className="ranking-window"><div className="window-title"><b>Xếp hạng Quant</b><span>Trong bộ lọc</span></div>{leaders.map(r=><button className="ranking-row" key={r.symbol} onClick={()=>setSelected(r.symbol)}><b>{r.symbol}</b><span className="amber">{r.score}</span><span className={priceClass(r.price,r)}>{fmt((change(r)||0)*100)}%</span></button>)}</section><section className="system-window"><div className="window-title"><b>Trạng thái dữ liệu</b></div><dl><div><dt>API</dt><dd>{status==='connected'?'Kết nối':status==='connecting'?'Đang kết nối':'Offline'}</dd></div><div><dt>CHẾ ĐỘ</dt><dd>{snapshot.mode}</dd></div><div><dt>PHÂN NGÀNH</dt><dd>{snapshot.classification?.mode==='demo'?'Minh họa':'Theo nguồn'}</dd></div><div><dt>WATCHLIST</dt><dd>{watch.size} mã</dd></div></dl><p>Dữ liệu TradingView độc lập với bảng điện. Nhãn nguồn và thời điểm cập nhật có thể khác nhau.</p></section></div></>;
 }
