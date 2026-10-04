@@ -34,3 +34,7 @@ Ngày 04/10/2026 · Nhánh `design/quantik-dashboard` · [PR #1](https://github.
 ## Điều chỉnh theo phản hồi 04/10/2026
 
 Bỏ trang tra cứu công thức và tab tra cứu trong chart. Công thức chỉ xuất hiện khi rê vào thuật ngữ gạch chân; các mục báo cáo của mỗi mã có nút mở/thu gọn riêng. Giữ luồng Quant như main: chọn module, tiến trình, summary, chạy lại và ảnh API dưới summary. Nguồn main trong fork chỉ có adapter ảnh placeholder, chưa chứa bộ visuals thực của website trong ảnh tham chiếu; demo tĩnh chưa chạy Python nên hiển thị ghi chú thay vì dựng giả ảnh pipeline.
+
+## Quy ước font khi merge
+
+Toàn bộ chữ giao diện, điều hướng, bảng giá, báo cáo và popup dùng **IBM Plex Mono**, với fallback monospace. Không dùng IBM Plex Sans cho UI. Công thức giữ font toán của KaTeX để hiển thị ký hiệu đúng. Quy ước này đã được áp dụng trên nhánh test và demo trước khi merge main.

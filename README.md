@@ -1,6 +1,6 @@
 # QuanTik — Không gian đầu tư định lượng
 
-Dashboard React + FastAPI cho cổ phiếu Việt Nam, gồm tổng quan thị trường, bảng điện, nhóm ngành, theo dõi, workspace biểu đồ/Quant và báo cáo theo từng mã. Có chế độ sáng/tối, bố cục điện thoại và logo/favicon QuanTik.
+Dashboard React + FastAPI cho cổ phiếu Việt Nam, gồm tổng quan thị trường, bảng điện, nhóm ngành, theo dõi, workspace biểu đồ/Quant và báo cáo theo từng mã. Có chế độ sáng/tối, bố cục điện thoại và logo/favicon QuanTik. Toàn bộ chữ giao diện dùng IBM Plex Mono theo phong cách terminal; fallback monospace khi chưa tải được font.
 
 ## Chạy trên máy
 
