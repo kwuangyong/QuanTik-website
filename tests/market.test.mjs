@@ -26,3 +26,13 @@ test('all 21 spreadsheet metrics retain provenance and valid LaTeX',async()=>{
  for(const t of glossary)assert.doesNotThrow(()=>katex.renderToString(t.formulaLatex,{throwOnError:true,trust:false}));
  for(const t of terms){assert(t.source.row>0);assert.doesNotThrow(()=>katex.renderToString(t.formulaLatex,{throwOnError:true,trust:false}));}
 });
+
+const {tokenizeTerms}=await server.ssrLoadModule('/src/content/term-aliases.js');
+test('inline annotations preserve report text and match complete terms',()=>{
+ const text='HMM BULL 100% · Sharpe 1.33 · CVaR 3% · Quant Factors · SHARPEX · AnnRet 21.9%';
+ const parts=tokenizeTerms(text);
+ assert.equal(parts.map(p=>p.text).join(''),text);
+ assert.deepEqual(parts.filter(p=>p.id).map(p=>p.id),['hmm','sharpe','cvar','quant_factor','annual_return']);
+ assert.equal(tokenizeTerms('Probability Loss >3%')[0].id,'probability_loss');
+ assert.equal(tokenizeTerms('hmm')[0].id,'hmm');
+});

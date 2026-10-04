@@ -1,5 +1,5 @@
 /* Optional browser suite. Install playwright locally and set QUANTIK_CHROMIUM if needed. */
-const {chromium}=require('playwright');
+const {chromium}=require(process.env.QUANTIK_PLAYWRIGHT||'playwright');
 const assert=require('node:assert/strict');
 const {spawn}=require('node:child_process');
 const path=require('node:path');
@@ -39,14 +39,28 @@ const waitReady=(child,pattern)=>new Promise((resolve,reject)=>{
  await page.locator('.sector-link').filter({hasText:'Ngân hàng'}).click();
  assert.equal(await page.locator('.traditional-board tbody tr').count(),5);
  await page.getByRole('button',{name:'Xóa lọc'}).click();
- await nav('Tra cứu công thức').click();
- const sharpe=page.getByRole('button',{name:'Sharpe',exact:false}).first();
+ assert.equal(await nav('Tra cứu công thức').count(),0);
+ await nav('Phân tích Quant').click();
+ await page.getByRole('button',{name:'Xem kết quả mẫu'}).click();
+ const report=page.getByRole('region',{name:'Báo cáo phân tích FPT'});
+ await page.locator('.analysis-report').waitFor();
+ const sections=page.locator('.analysis-page .report-toggle');assert.equal(await sections.count(),4);
+ assert.equal(await sections.nth(0).getAttribute('aria-expanded'),'true');
+ await sections.nth(1).click();assert.equal(await sections.nth(0).getAttribute('aria-expanded'),'true');
+ await sections.nth(0).click();assert.equal(await sections.nth(1).getAttribute('aria-expanded'),'true');
+ await sections.nth(0).click();
+ const sharpe=page.getByRole('button',{name:'Sharpe',exact:true}).first();
  await sharpe.hover();await page.getByRole('tooltip').waitFor();
  assert.equal(await page.getByRole('tooltip').locator('.katex').count(),1);
- await sharpe.click();await page.getByRole('dialog',{name:'Sharpe',exact:true}).waitFor();
+ assert.equal(await sharpe.locator('.term-mark').count(),0);
+ assert((await sharpe.evaluate(el=>getComputedStyle(el).textDecorationLine)).includes('underline'));
  await page.screenshot({path:'/tmp/quantik-qa/formula-popup.png',fullPage:true});
  await page.keyboard.press('Escape');
- await nav('Thị trường').click();
+ await sections.nth(2).click();
+ await page.getByRole('button',{name:'HMM',exact:true}).first().hover();
+ await page.getByRole('tooltip').waitFor();assert(await page.getByRole('tooltip').getByText('HMM Regime',{exact:true}).isVisible());
+ await page.keyboard.press('Escape');
+  await nav('Thị trường').click();
  await page.locator('.symbol-link').filter({hasText:'FPT'}).first().click();
  const stock=page.getByRole('dialog',{name:'FPT',exact:true});await stock.waitFor();
  await stock.getByRole('button',{name:'Chạy phân tích FPT'}).click();
@@ -62,10 +76,12 @@ const waitReady=(child,pattern)=>new Promise((resolve,reject)=>{
  const box=await separator.boundingBox();await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x-30,box.y+box.height/2);await page.mouse.up();
  assert.equal(await stock.locator('.tradingview-widget-container').getAttribute('data-test-identity'),before);
  await stock.getByLabel('Khung nến').selectOption('15');assert.equal(await stock.getByLabel('Khung nến').inputValue(),'15');
- await stock.getByRole('button',{name:'Sharpe',exact:false}).hover();await page.getByRole('tooltip').waitFor();
- await stock.getByRole('button',{name:'Sharpe',exact:false}).click();await page.getByRole('dialog',{name:'Sharpe',exact:true}).waitFor();
+ assert(await stock.locator('.qimg').isVisible());
+ const stockSections=stock.locator('.report-toggle');await stockSections.nth(0).click();await stockSections.nth(0).click();
+ await stock.getByRole('button',{name:'Sharpe',exact:true}).hover();await page.getByRole('tooltip').waitFor();
+ await stock.getByRole('button',{name:'Sharpe',exact:true}).click();await page.getByRole('tooltip').waitFor();
  await page.keyboard.press('Escape');assert(await stock.isVisible());
- await page.screenshot({path:'/tmp/quantik-qa/chart-panel.png',fullPage:true});
+  await page.screenshot({path:'/tmp/quantik-qa/chart-panel.png',fullPage:true});
  await stock.getByRole('button',{name:'Đóng',exact:true}).click();
  await nav('Thị trường').click();
  await page.getByRole('button',{name:'Theo dõi FPT',exact:true}).click();
@@ -87,6 +103,6 @@ const waitReady=(child,pattern)=>new Promise((resolve,reject)=>{
  await nav('Phân tích Quant').click();await page.getByRole('button',{name:'Xem kết quả mẫu'}).click();
  await page.getByText('Mẫu tĩnh, không chạy mô hình',{exact:false}).waitFor();
  assert.deepEqual(errors,[]);
- console.log('PASS: real demo API job; sector/exchange filtering; grouped order book; formula hover/click/Escape; collapse and resize preserve chart/results; timeframe; persistence; mobile overflow; offline fallback. External TradingView script aborted for deterministic tests.');
+ console.log('PASS: real demo API job; sector/exchange filtering; grouped order book; inline formula hover/touch/Escape; independent report accordions and pipeline image; collapse and resize preserve chart/results; timeframe; persistence; mobile overflow; offline fallback. External TradingView script aborted for deterministic tests.');
  }finally{await browser?.close();vite.kill();api.kill();}
 })().catch(e=>{console.error(e);process.exitCode=1});

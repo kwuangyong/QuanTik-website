@@ -1,6 +1,6 @@
 # QuanTik — Không gian đầu tư định lượng
 
-Dashboard React + FastAPI cho cổ phiếu Việt Nam, gồm tổng quan thị trường, bảng điện, nhóm ngành, theo dõi, workspace biểu đồ/Quant và tra cứu công thức. Có chế độ sáng/tối, bố cục điện thoại và logo/favicon QuanTik.
+Dashboard React + FastAPI cho cổ phiếu Việt Nam, gồm tổng quan thị trường, bảng điện, nhóm ngành, theo dõi, workspace biểu đồ/Quant và báo cáo theo từng mã. Có chế độ sáng/tối, bố cục điện thoại và logo/favicon QuanTik.
 
 ## Chạy trên máy
 
@@ -25,8 +25,9 @@ Mở http://localhost:5173. Có thể dùng `npm install`/`npm run dev` thay cho
 - Nhóm ngành hiển thị biến động trung bình đều, độ rộng, thanh khoản và độ phủ dữ liệu. Đây là thống kê từ tập mẫu đang lọc, không phải chỉ số ngành chính thức.
 - Bấm mã để mở workspace: biểu đồ bên cạnh panel phân tích có thể thu gọn và kéo thay đổi kích thước. Trên điện thoại, panel nằm phía dưới. Thu gọn panel giữ kết quả và không khởi chạy lại job.
 - Bộ chọn khung nến gồm 1/3/5/15/30 phút, 1/2/4 giờ, ngày, tuần và tháng; cấu hình widget mở toolbar/chỉ báo/công cụ vẽ. Các chức năng thực tế phụ thuộc TradingView và dữ liệu từng mã. Đổi khung bằng selector QuanTik tạo lại widget; dùng toolbar TradingView khi cần giữ thao tác trong chart.
-- Di chuột hoặc focus vào thuật ngữ để xem ý nghĩa/công thức; bấm mở thẻ có biến số, tham số, cách dùng, ví dụ và giới hạn. Hỗ trợ bàn phím, Escape và thẻ chi tiết trên điện thoại.
-- 21 chỉ số từ `Chỉ số.xlsx` có nguồn hàng/sheet, công thức tham chiếu và ngưỡng gốc. Công thức hiển thị bằng KaTeX; chưa tính được thì giá trị là “—”. Tra cứu thêm thuật ngữ thị trường, chỉ báo và PSR/DSR.
+- Di chuột hoặc focus vào thuật ngữ gạch chân ngay trong báo cáo để xem ý nghĩa/công thức và cách dùng. Trên điện thoại, chạm để giữ popup; Escape hoặc chạm bên ngoài để đóng. Không có trang tra cứu công thức riêng.
+- Từng mục báo cáo (hiệu suất, biến động, tín hiệu, rủi ro) mở/thu gọn độc lập theo mã đang xem. Quant giữ hàng summary và ảnh từ API như main; pipeline có thể trả `reportSections` gồm id/title/text để giữ nguyên lời phân tích và tự gạch chân các thuật ngữ đã đăng ký.
+- 21 chỉ số từ `Chỉ số.xlsx` có nguồn hàng/sheet, công thức tham chiếu và ngưỡng gốc. Công thức hiển thị bằng KaTeX; chưa tính được thì giá trị là “—”. Popup giải thích thêm thuật ngữ thị trường, chỉ báo, HMM, Quant Factor và PSR/DSR.
 - Theo dõi cổ phiếu, màu giao diện và kích thước panel được lưu trên trình duyệt. Ô lệnh hỗ trợ `FPT`, `FPT CHART`, `FPT Q`, `WATCH`, `MARKET`; phím `/` mở ô lệnh.
 - Logo trong header và favicon đã được khai báo.
 
@@ -66,7 +67,7 @@ npx playwright install chromium
 node tests/e2e.cjs
 ```
 
-Suite tự khởi động frontend/backend và kiểm tra bảng điện, ngành, công thức, job API mẫu, panel, lưu lựa chọn, mobile và mất kết nối. Script TradingView bên ngoài được chặn để kiểm tra QuanTik ổn định; suite **không xác nhận** dữ liệu, toolbar/chỉ báo hay các khung nến thực tế của nhà cung cấp. Có thể đặt `QUANTIK_CHROMIUM`/`QUANTIK_PYTHON` cho executable riêng. Ảnh kiểm tra ghi vào `/tmp/quantik-qa/`.
+Suite tự khởi động frontend/backend và kiểm tra bảng điện, ngành, thuật ngữ gạch chân, báo cáo mở/thu gọn từng mục, ảnh pipeline, job API mẫu, panel, lưu lựa chọn, mobile và mất kết nối. Script TradingView bên ngoài được chặn để kiểm tra QuanTik ổn định; suite **không xác nhận** dữ liệu, toolbar/chỉ báo hay các khung nến thực tế của nhà cung cấp. Có thể đặt `QUANTIK_CHROMIUM`/`QUANTIK_PYTHON` cho executable riêng. Ảnh kiểm tra ghi vào `/tmp/quantik-qa/`.
 
 ## Build / triển khai
 

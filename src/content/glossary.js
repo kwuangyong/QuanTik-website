@@ -1,5 +1,7 @@
 import metrics from './metrics.json';
 const extras = [
+ ['monte_carlo','Monte Carlo','Mô phỏng Monte Carlo','Lặp nhiều lần lấy mẫu ngẫu nhiên để ước lượng phân phối hoặc kỳ vọng.',String.raw`\widehat{E}[f(X)]=\frac{1}{M}\sum_{m=1}^{M}f(X^{(m)})`,'M là số mẫu mô phỏng; mô hình sinh mẫu và giả định quyết định kết quả. Nhiều đường mô phỏng không tự sửa sai lệch mô hình.'],
+ ['quant_factor','Quant Factor','Nhân tố định lượng','Biến định lượng mô tả một đặc điểm của cổ phiếu, như động lượng, giá trị, chất lượng hoặc biến động.',String.raw`z_i=\frac{x_i-\mu_i}{\sigma_i}`,'Công thức minh họa việc chuẩn hóa một nhân tố. Định nghĩa, cửa sổ dữ liệu và cách tổng hợp phải khớp pipeline; một factor không đồng nghĩa với tín hiệu mua.'],
  ['ref','Tham chiếu','Giá tham chiếu','Giá làm mốc so sánh trong phiên.',String.raw`\Delta P=P-P_{ref}`,'Theo quy tắc sàn và dữ liệu nhà cung cấp; không suy ra từ giá cuối trong mọi trường hợp.'],
  ['ceil','Trần','Giá trần','Giới hạn giá phía trên của phiên.',String.raw`P\leq P_{ceil}`,'Lấy giá được nguồn cung cấp; làm tròn bước giá theo sàn.'],
  ['floor','Sàn','Giá sàn','Giới hạn giá phía dưới của phiên.',String.raw`P\geq P_{floor}`,'Lấy giá được nguồn cung cấp; làm tròn bước giá theo sàn.'],
