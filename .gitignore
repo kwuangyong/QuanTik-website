@@ -22,3 +22,6 @@ Thumbs.db
 
 # Build artifacts
 coverage/
+
+# Runtime demo analysis cache
+backend/out/

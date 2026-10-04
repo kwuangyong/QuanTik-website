@@ -7,27 +7,32 @@ from __future__ import annotations
 import hashlib, random, time
 from pathlib import Path
 
-# ---- 1. Bảng điện ---------------------------------------------------------
-def load_board(group: str) -> list[dict]:
-    """Trả về danh sách mã. Giá tính theo nghìn đồng.
-    TODO: đọc từ vnstock_data (KBS/VCI) hoặc Google Sheet giá real-time của bạn,
-    và lấy `score` từ kết quả pipeline chạy cuối phiên (cache), không tính lại mỗi lần gọi."""
-    universe = ["HHP", "HPG", "VCB", "FPT", "VNM", "MWG", "SSI", "VIC", "VHM", "ACB", "TCB", "MBB", "VPB", "GAS", "MSN"]
-    if group == "VN30":
-        universe = [s for s in universe if s != "HHP"]
-    rows = []
-    for s in universe:
-        r = random.Random(int(hashlib.md5(s.encode()).hexdigest(), 16) + int(time.time() // 5))
-        ref = round(10 + (int(hashlib.md5(s.encode()).hexdigest(), 16) % 900) / 10, 2)
-        price = round(ref * (1 + r.uniform(-0.03, 0.03)), 2)
-        rows.append({
-            "sym": s, "name": "", "sector": "", "ref": ref, "price": price,
-            "ceil": round(ref * 1.07, 2), "floor": round(ref * 0.93, 2),
-            "vol": r.randint(200_000, 3_000_000),
-            "score": 40 + int(hashlib.md5(s.encode()).hexdigest(), 16) % 50,
-            "spark": [round(ref * (1 + r.uniform(-0.05, 0.05)), 2) for _ in range(30)],
-        })
-    return rows
+# Canonical demo catalog shared with React. Replace this adapter for a real feed.
+import copy, json
+SAMPLE = json.loads((Path(__file__).resolve().parents[1] / "shared/market-demo.json").read_text())
+MODE = "demo"
+DATA_VERSION = SAMPLE["version"]
+MODEL_VERSION = "placeholder-v2"
+
+def load_board(group: str = "ALL", exchange: str | None = None, sector: str | None = None) -> dict:
+    data = copy.deepcopy(SAMPLE)
+    chosen_exchange = exchange or (group if group in {"HOSE", "HNX", "UPCOM"} else None)
+    data["instruments"] = [i for i in data["instruments"] if (not chosen_exchange or i["exchange"] == chosen_exchange) and (not sector or i["sectorId"] == sector)]
+    syms = {i["symbol"] for i in data["instruments"]}
+    data["quotes"] = [q for q in data["quotes"] if q["symbol"] in syms]
+    return data
+
+def sector_summary(exchange: str | None = None, sector: str | None = None) -> list[dict]:
+    data = load_board(exchange=exchange, sector=sector)
+    result = []
+    for s in SAMPLE["sectors"]:
+        syms = {i["symbol"] for i in data["instruments"] if i["sectorId"] == s["id"]}
+        qs = [q for q in data["quotes"] if q["symbol"] in syms]
+        if not qs: continue
+        returns = [q["price"] / q["ref"] - 1 for q in qs if q.get("price") is not None and q.get("ref", 0) > 0]
+        values = [q["value"] for q in qs if q.get("value") is not None]
+        result.append({"sectorId": s["id"], "name": s["name"], "count": len(qs), "valid": len(returns), "mean": sum(returns)/len(returns) if returns else None, "value": sum(values) if values else None, "valueCoverage": len(values), "method": "equal-weight-return", "mode": "demo"})
+    return result
 
 # ---- 2. Pipeline quant ----------------------------------------------------
 MODULES = [
@@ -45,7 +50,7 @@ MODULES = [
 def load_context(symbol: str) -> dict:
     """Nạp dữ liệu giá của mã + VN-Index vào một dict dùng chung cho các module.
     TODO: gọi hàm tải dữ liệu trong quant_pipeline.py / crawl_data.py."""
-    return {"symbol": symbol}
+    return {"symbol": symbol, "quote": next(q for q in SAMPLE["quotes"] if q["symbol"] == symbol)}
 
 def run_module(module_id: str, ctx: dict) -> dict:
     """Chạy MỘT module và ghi kết quả vào ctx.
@@ -59,8 +64,17 @@ def run_module(module_id: str, ctx: dict) -> dict:
 
 def summarize(ctx: dict) -> dict:
     """Các con số hiển thị ở hàng đầu bảng kết quả (đơn vị: nghìn đồng)."""
-    return {"score": 59, "action": "Theo dõi, chờ xác nhận", "entry": 17.0, "stop": 16.25,
-            "tp1": 17.6, "tp2": 17.7, "net_r": 0.63, "atr_pct": 2.12}
+    q = ctx["quote"]
+    p = q["price"] / 1000
+    # Layout sample only: this is not a financial model or executable strategy.
+    return {"score": q["score"], "action": "Theo dõi (mô phỏng)", "entry": p,
+            "stop": round(p * .95, 2), "tp1": round(p * 1.1, 2), "tp2": round(p * 1.15, 2),
+            "net_r": 2.0, "atr_pct": None}
+
+def metric_results(ctx: dict) -> list[dict]:
+    definitions = json.loads((Path(__file__).resolve().parents[1] / "src/content/metrics.json").read_text())
+    return [{"id": m["id"], "value": None, "unit": "", "status": "not_computed", "methodId": m["methodId"], "provenance": "reference-only"} for m in definitions]
+
 
 def render_image(ctx: dict, path: Path) -> None:
     """Dựng ảnh tổng quan 6 panel và lưu ra `path` (PNG).
