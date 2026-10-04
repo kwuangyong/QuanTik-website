@@ -1,31 +1,49 @@
-# QuanTik web (React + Python)
+# QuanTik — Không gian đầu tư định lượng
 
-## Chạy thử
+Dashboard React + Python cho cổ phiếu Việt Nam. Giao diện gồm Thị trường, Theo dõi, Phân tích Quant và Hướng dẫn; hỗ trợ chế độ sáng/tối và điện thoại.
+
+## Chạy trên máy
+
 ```bash
-# 1) Python API
-cd backend && pip install -r requirements.txt && uvicorn server:app --reload --port 8000
-
-# 2) React (terminal khác)
-cd .. && npm install && npm run dev      # mở http://localhost:5173
+npm install
+npm run dev
 ```
 
-## Nối code Python thật
-Chỉ sửa `backend/adapters.py` (4 hàm: `load_board`, `load_context`, `run_module`, `summarize`, `render_image`).
-`server.py` và React giữ nguyên.
+Chạy API trong terminal khác:
 
-## Luồng dữ liệu
-- Bảng điện: React gọi `GET /api/board` mỗi 5 giây.
-- Bấm mã: popup mở, biểu đồ/kỹ thuật là widget TradingView (`HOSE:<mã>`), không đi qua Python.
-- Bấm Quant: `POST /api/quant/jobs` -> React hỏi `GET /api/quant/jobs/{id}` mỗi 0,7 giây -> khi xong hiện
-  `summary` và ảnh từ `GET /api/quant/jobs/{id}/image`. Kết quả cache theo (mã, ngày, module).
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn server:app --reload --port 8000
+```
 
+Mở http://localhost:5173. Khi API không hoạt động, bảng giá dùng mẫu tĩnh và hiển thị thông báo. Phân tích Quant cần API hoạt động.
 
-## Giao diện terminal
-- Nền đen, chữ monospace, màu hổ phách, bảng giá dày, cửa sổ vuông.
-- Bấm dòng để xem chi tiết; bấm đúp hoặc Enter để mở biểu đồ.
-- Thanh lệnh: FPT, FPT CHART, FPT Q, WATCH, MARKET. Phím / đưa focus vào lệnh.
-- Theo dõi lưu trên trình duyệt; lọc mã/doanh nghiệp và sắp xếp cột.
-- Dữ liệu mẫu có nhãn rõ ràng. Backend vẫn mô phỏng, chưa nối pipeline Python thật.
-- Mobile giữ bảng đầy đủ với cuộn ngang.
+## Thao tác
 
-Build: npm run build. Có thể chạy trực tiếp node node_modules/vite/bin/vite.js nếu pnpm bị lỗi kiểm tra dependency trong môi trường này.
+- Lọc mã hoặc doanh nghiệp; bấm tiêu đề cột để sắp xếp bằng chuột hoặc bàn phím.
+- Bấm ngôi sao để lưu cổ phiếu vào Theo dõi; danh sách và chế độ màu lưu trên trình duyệt.
+- Chọn dòng để xem chi tiết; bấm đúp hoặc Enter để mở tổng quan.
+- Tra cứu nhanh: `FPT`, `FPT CHART`, `FPT Q`, `WATCH`, `MARKET`. Phím `/` tập trung vào ô lệnh; Escape đóng cửa sổ chi tiết.
+- Trang Phân tích Quant cho phép chọn cổ phiếu và module, xem tiến trình, kết quả và chạy lại.
+- Biểu đồ TradingView cần Internet và hiển thị trạng thái lỗi/tải lại khi script không tải được.
+- Mobile giữ các cột bảng giá với cuộn ngang bên trong bảng; điều hướng nằm phía dưới.
+
+## Tích hợp pipeline thật
+
+`backend/adapters.py` đang mô phỏng bảng giá và các module. Thay thân hàm `load_board`, `load_context`, `run_module`, `summarize`, `render_image` bằng pipeline thật, giữ định dạng trả về.
+
+Luồng Quant: `POST /api/quant/jobs` → hỏi `GET /api/quant/jobs/{id}` mỗi 700 ms → hiển thị summary và ảnh `GET /api/quant/jobs/{id}/image`. Bảng giá cập nhật mỗi 5 giây.
+
+**Giá, điểm Quant và kết quả phân tích hiện là mô phỏng.** Biểu đồ TradingView có nguồn độc lập. Nhóm VN30 hiện là tập con minh họa, không phải danh sách thành phần được cập nhật chính thức.
+
+## Build / triển khai
+
+```bash
+npm run build
+npm run preview
+```
+
+Frontend build vào `dist/`. Khi triển khai riêng frontend và backend, đặt `VITE_API_BASE=https://<api-host>/api` **trước khi build**; cập nhật CORS trong `backend/server.py` cho domain frontend. Hoặc cấu hình reverse proxy `/api` trên cùng domain tới FastAPI. `vite.config.js` chỉ proxy API trong môi trường phát triển.
+
+Backend hiện là bản thử nghiệm: job/cache trong tiến trình, chưa có đăng nhập hoặc quản lý người dùng. Việc thiết kế giao diện chưa tích hợp pipeline thật hay triển khai production.

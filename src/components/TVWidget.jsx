@@ -1,15 +1,18 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 
 const BASE = 'https://s3.tradingview.com/external-embedding/';
 
 /** Nhúng widget TradingView. `name` là tên file script, config là JSON cấu hình. */
 function TVWidget({ name, config }) {
   const ref = useRef(null);
+  const [status,setStatus] = useState('loading');
+  const [retry,setRetry] = useState(0);
   const key = JSON.stringify(config);
 
   useEffect(() => {
     const host = ref.current;
     host.innerHTML = '';
+    setStatus('loading');
     const inner = document.createElement('div');
     inner.className = 'tradingview-widget-container__widget';
     inner.style.height = '100%';
@@ -17,11 +20,15 @@ function TVWidget({ name, config }) {
     script.src = BASE + name;
     script.async = true;
     script.text = key; // TradingView đọc cấu hình từ nội dung thẻ script
+    script.onerror = () => setStatus('error');
+    const observer = new MutationObserver(() => { if(host.querySelector('iframe')) setStatus('ready'); });
+    observer.observe(host,{childList:true,subtree:true});
     host.append(inner, script);
-    return () => { host.innerHTML = ''; };
-  }, [name, key]);
+    const timeout = setTimeout(() => { if(!host.querySelector('iframe')) setStatus('error'); },15000);
+    return () => { observer.disconnect(); clearTimeout(timeout); host.innerHTML = ''; };
+  }, [name, key, retry]);
 
-  return <div className="tradingview-widget-container" ref={ref} style={{ height: '100%', width: '100%' }} />;
+  return <div className="widget-host">{status !== 'ready' && <div className="widget-status" role="status"><p>{status === 'loading' ? 'Đang tải biểu đồ TradingView…' : 'Không tải được TradingView. Kiểm tra kết nối Internet hoặc thử lại.'}</p>{status === 'error' && <button className="btn ghost" onClick={()=>setRetry(x=>x+1)}>Tải lại biểu đồ</button>}</div>}<div className="tradingview-widget-container" ref={ref} style={{ height: '100%', width: '100%' }} /></div>;
 }
 
 export default memo(TVWidget);

@@ -8,24 +8,28 @@ function useQuantJob() {
   const [job, setJob] = useState(null);
   const [error, setError] = useState('');
   const timer = useRef(null);
+  const generation = useRef(0);
 
   const stop = () => clearTimeout(timer.current);
-  useEffect(() => stop, []);
+  useEffect(() => () => { stop(); generation.current += 1; }, []);
 
   const run = useCallback(async (symbol, modules) => {
-    stop(); setError(''); setJob({ status: 'queued', modules: [] });
+    stop(); const token = ++generation.current; setError(''); setJob({ status: 'queued', modules: [] });
     try {
       const { id } = await startQuant(symbol, modules);
+      if (token !== generation.current) return;
       const tick = async () => {
+        if (token !== generation.current) return;
         let j;
-        try { j = await getJob(id); } catch (e) { setError('Mất kết nối khi chạy phân tích. Vui lòng thử lại.'); setJob({status:'error', modules:[]}); return; }
+        try { j = await getJob(id); } catch (e) { if (token !== generation.current) return; setError('Mất kết nối khi chạy phân tích. Vui lòng thử lại.'); setJob({status:'error', modules:[]}); return; }
+        if (token !== generation.current) return;
         setJob(j);
         if (j.status === 'error') setError(j.error || 'Pipeline báo lỗi.');
         if (j.status === 'done' || j.status === 'error') return;
         timer.current = setTimeout(tick, 700);
       };
       await tick();
-    } catch (e) { setError('Không chạy được pipeline: ' + e.message); setJob(null); }
+    } catch (e) { if (token !== generation.current) return; setError('Không kết nối được dịch vụ phân tích. Kiểm tra Python API rồi thử lại.'); setJob({status:'error', modules:[]}); }
   }, []);
 
   return { job, error, run };
@@ -40,7 +44,7 @@ export default function QuantPanel({ sym, autoRun }) {
   useEffect(() => {
     listModules().then((m) => { setMods(m); setSel(m.map((x) => x.id)); }).catch(() => setModuleError(true));
   }, []);
-  useEffect(() => { if (autoRun) run(sym, null); }, [sym]); // eslint-disable-line
+  useEffect(() => { if (autoRun) run(sym, null); }, [sym, autoRun, run]);
 
   const running = job && (job.status === 'queued' || job.status === 'running');
   const s = job?.summary;
@@ -89,13 +93,13 @@ export default function QuantPanel({ sym, autoRun }) {
       {job.status === 'done' && (
         <>
           <div className="ctl">
-            <span className="dim">Hoàn tất, {job.modules.length} module</span><span style={{ flex: 1 }} />
+            <span className="dim">Hoàn tất, {job.modules.length} module · Kết quả mô phỏng</span><span style={{ flex: 1 }} />
             <button className="btn ghost" onClick={() => run(sym, sel.length ? sel : null)}>Chạy lại</button>
           </div>
           {s && (
             <div className="keyrow">
-              <div><small>Điểm Quant</small><b>{s.score} / 100</b></div>
-              <div><small>Khuyến nghị</small><b style={{ fontSize: 13 }}>{s.action}</b></div>
+              <div><small>Điểm Quant mô phỏng</small><b>{s.score} / 100</b></div>
+              <div><small>Kết luận mẫu</small><b style={{ fontSize: 13 }}>{s.action}</b></div>
               <div><small>Điểm vào</small><b>{fmt(s.entry)}</b></div>
               <div><small>Cắt lỗ</small><b className="down">{fmt(s.stop)}</b></div>
               <div><small>Chốt lời 1</small><b className="up">{fmt(s.tp1)}</b></div>

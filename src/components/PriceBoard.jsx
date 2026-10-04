@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getBoard } from '../api.js';
 import { demoRows } from '../demo.js';
 
-const GROUPS = [['HOSE', 'HOSE'], ['VN30', 'VN30'], ['WATCH', 'WATCHLIST']];
+const GROUPS = [['HOSE', 'HOSE'], ['VN30', 'VN30 (mẫu)'], ['WATCH', 'Theo dõi']];
 const fmt = (x, d = 2) => (x == null ? '–' : x.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d }));
 const cls = (p, r) => (p >= r.ceil - 1e-9 ? 'ceil' : p <= r.floor + 1e-9 ? 'floor' : p > r.ref + 1e-9 ? 'up' : p < r.ref - 1e-9 ? 'down' : 'ref');
 const scoreCls = (s) => (s >= 70 ? 's-hi' : s >= 50 ? 's-mid' : 's-lo');
@@ -40,15 +40,15 @@ export default function PriceBoard({ section, onOpen, onQuant }) {
         if (stop) return;
         const f = {};
         data.forEach((r) => { const p = prev.current[r.sym]; if (p != null && p !== r.price) f[r.sym] = r.price > p ? 'flash-up' : 'flash-dn'; prev.current[r.sym] = r.price; });
-        setFlash(f); setRows(data); setSource('api'); setErr('');
-      } catch (e) { if (!stop) setErr('FEED OFFLINE — Đang hiển thị mẫu tĩnh. Python API chưa kết nối.'); }
+        setFlash(f); setRows(data.map(r => ({...r, name:r.name || demoRows.find(d => d.sym === r.sym)?.name || r.sym}))); setSource('api'); setErr('');
+      } catch (e) { if (!stop) setErr('Đang hiển thị dữ liệu mẫu tĩnh. Dịch vụ dữ liệu chưa kết nối.'); }
     };
     load();
     const t = setInterval(load, 5000);
     return () => { stop = true; clearInterval(t); };
   }, [group]);
 
-  useEffect(() => localStorage.setItem('qt.watch', JSON.stringify([...watch])), [watch]);
+  useEffect(() => { try { localStorage.setItem('qt.watch', JSON.stringify([...watch])); } catch {} }, [watch]);
 
   const view = useMemo(() => {
     const a = rows.filter((r) => (group === 'WATCH' ? watch.has(r.sym) : group === 'VN30' ? r.sym !== 'HHP' : true) && (!q || `${r.sym} ${r.name}`.toLocaleLowerCase('vi').includes(q.trim().toLocaleLowerCase('vi'))));
@@ -57,8 +57,8 @@ export default function PriceBoard({ section, onOpen, onQuant }) {
   }, [rows, group, q, sort, watch]);
 
   const th = (k, label, hide) => (
-    <th key={k} className={hide ? 'hide-sm' : ''} onClick={() => setSort((s) => (s.k === k ? { k, d: -s.d } : { k, d: k === 'sym' ? 1 : -1 }))} data-sorted={sort.k === k || undefined}>
-      {label}{sort.k === k ? (sort.d > 0 ? ' ▲' : ' ▼') : ''}
+    <th key={k} className={hide ? 'hide-sm' : ''} aria-sort={sort.k === k ? (sort.d > 0 ? 'ascending' : 'descending') : 'none'} data-sorted={sort.k === k || undefined}>
+      <button className="sort-button" onClick={() => setSort(s => s.k === k ? {k,d:-s.d} : {k,d:k === 'sym' ? 1 : -1})}>{label}{sort.k === k ? (sort.d > 0 ? ' ↑' : ' ↓') : ''}</button>
     </th>
   );
 
@@ -68,13 +68,18 @@ export default function PriceBoard({ section, onOpen, onQuant }) {
   const current = rows.find(r=>r.sym===selected) || rows[0];
   return (
     <>
-      <div className="market-strip"><b>VN EQUITIES</b><span>TẬP MÃ <strong>{rows.length}</strong></span><span className="up">TĂNG {rising}</span><span className="down">GIẢM {falling}</span><span className="ref">ĐỨNG {rows.length-rising-falling}</span><span className="strip-end">{source === 'api' && !err ? 'API / SIMULATED' : 'OFFLINE / SAMPLE'}</span></div>
-      <section className="market-panel"><div className="window-title"><b>01 / EQUITY MONITOR</b><span>GIÁ: 1.000 VNĐ · KHỐI LƯỢNG: CP · QUANT: /100</span></div>
+      <div className="market-strip">
+        <article className="metric"><div className="metric-top"><span>Cổ phiếu trong tập dữ liệu</span><span>◫</span></div><strong>{rows.length}</strong><small>Tập dữ liệu mô phỏng · HOSE</small></article>
+        <article className="metric"><div className="metric-top"><span>Cổ phiếu tăng giá</span><span>↗</span></div><strong className="up">{rising}</strong><small>{rows.length ? Math.round(rising/rows.length*100) : 0}% tập dữ liệu</small></article>
+        <article className="metric"><div className="metric-top"><span>Cổ phiếu giảm giá</span><span>↘</span></div><strong className="down">{falling}</strong><small>{rows.length-rising-falling} mã giữ tham chiếu</small></article>
+        <article className="metric"><div className="metric-top"><span>Điểm Quant cao nhất</span><span>⌁</span></div><strong className="amber">{leaders[0]?.score ?? '—'}<small> / 100</small></strong><small>{leaders[0]?.sym || '—'} · Điểm mô phỏng</small></article>
+      </div>
+      <section className="market-panel"><div className="window-title"><b>Bảng giá cổ phiếu</b><span>GIÁ: 1.000 VNĐ · KHỐI LƯỢNG: CP · QUANT: /100</span></div>
       <div className="toolbar">
         <div className="tabs" role="tablist">
           {GROUPS.map(([k, l]) => <button key={k} className="tab" role="tab" aria-selected={group === k} onClick={() => setGroup(k)}>{l}</button>)}
         </div>
-        <label className="search"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="LỌC MÃ / DOANH NGHIỆP" aria-label="Tìm mã" /></label>
+        <label className="search"><input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Tìm mã hoặc doanh nghiệp…" aria-label="Tìm mã" /></label>
       </div>
       
       {err && <p className="err">{err}</p>}
@@ -114,12 +119,12 @@ export default function PriceBoard({ section, onOpen, onQuant }) {
       </div>
       <div className="table-footer"><span>{view.length} cổ phiếu · {group === 'WATCH' ? 'Danh sách cá nhân' : group}</span><span>Dữ liệu mô phỏng phục vụ xem giao diện</span></div></section>
       <div className="terminal-lower">
-        <section className="detail-window"><div className="window-title"><b>02 / SECURITY DETAIL</b><span>{current?.sym || '—'} EQUITY</span></div>{current && <>
-          <div className="security-heading"><b>{current.sym}</b><span>{current.name || 'HOSE'}</span><strong className={cls(current.price,current)}>{fmt(current.price)}</strong><button onClick={()=>onOpen(current.sym)}>CHART ↗</button></div>
+        <section className="detail-window"><div className="window-title"><b>Chi tiết cổ phiếu</b><span>{current?.sym || '—'} EQUITY</span></div>{current && <>
+          <div className="security-heading"><b>{current.sym}</b><span>{current.name || 'HOSE'}</span><strong className={cls(current.price,current)}>{fmt(current.price)}</strong><button onClick={()=>onOpen(current.sym)}>Biểu đồ ↗</button></div>
           <div className="detail-body"><div className="history-chart"><span>30 PHIÊN / MÔ PHỎNG</span><Spark v={current.spark}/><div className="chart-axis"><span>T−29</span><span>T−15</span><span>T</span></div></div><dl><div><dt>THAM CHIẾU</dt><dd className="ref">{fmt(current.ref)}</dd></div><div><dt>THAY ĐỔI</dt><dd className={cls(current.price,current)}>{fmt((current.price/current.ref-1)*100)}%</dd></div><div><dt>KHỐI LƯỢNG</dt><dd>{fmt(current.vol,0)}</dd></div><div><dt>QUANT SCORE</dt><dd className="amber">{current.score ?? '—'} / 100</dd></div></dl></div>
         </>}</section>
-        <section className="ranking-window"><div className="window-title"><b>03 / QUANT RANKING</b><span>DEMO</span></div><div className="ranking-head"><span>MÃ</span><span>ĐIỂM</span><span>Δ %</span></div>{leaders.map(r=><button className="ranking-row" key={r.sym} onClick={()=>{setSelected(r.sym);}}><b>{r.sym}</b><span className="amber">{r.score}</span><span className={cls(r.price,r)}>{fmt((r.price/r.ref-1)*100)}%</span></button>)}</section>
-        <section className="system-window"><div className="window-title"><b>04 / SESSION</b><span>STATUS</span></div><dl><div><dt>NGUỒN GIÁ</dt><dd className="amber">{source === 'api' && !err ? 'DEMO API' : 'LOCAL SAMPLE'}</dd></div><div><dt>PYTHON API</dt><dd className={err ? 'down' : 'ref'}>{err ? 'OFFLINE' : source === 'api' ? 'CONNECTED' : 'CONNECTING'}</dd></div><div><dt>CHU KỲ POLL</dt><dd>5 SEC</dd></div><div><dt>WATCHLIST</dt><dd>{watch.size} SYMBOLS</dd></div></dl><p>Chọn dòng: xem chi tiết<br/>Bấm đúp / Enter: biểu đồ<br/>QUANT: mở phân tích mô hình</p></section>
+        <section className="ranking-window"><div className="window-title"><b>Xếp hạng Quant</b><span>DEMO</span></div><div className="ranking-head"><span>MÃ</span><span>ĐIỂM</span><span>Δ %</span></div>{leaders.map(r=><button className="ranking-row" key={r.sym} onClick={()=>{setSelected(r.sym);}}><b>{r.sym}</b><span className="amber">{r.score}</span><span className={cls(r.price,r)}>{fmt((r.price/r.ref-1)*100)}%</span></button>)}</section>
+        <section className="system-window"><div className="window-title"><b>Kết nối dữ liệu</b><span>STATUS</span></div><dl><div><dt>NGUỒN GIÁ</dt><dd className="amber">{source === 'api' && !err ? 'DEMO API' : 'LOCAL SAMPLE'}</dd></div><div><dt>PYTHON API</dt><dd className={err ? 'down' : 'ref'}>{err ? 'OFFLINE' : source === 'api' ? 'CONNECTED' : 'CONNECTING'}</dd></div><div><dt>CHU KỲ POLL</dt><dd>5 SEC</dd></div><div><dt>WATCHLIST</dt><dd>{watch.size} SYMBOLS</dd></div></dl><p>Chọn dòng: xem chi tiết<br/>Bấm đúp / Enter: biểu đồ<br/>QUANT: mở phân tích mô hình</p></section>
       </div>
     </>
   );

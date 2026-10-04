@@ -7,11 +7,13 @@ const TABS = [['overview', 'Tổng quan'], ['chart', 'Biểu đồ nến'], ['ta
 export default function StockModal({ sym, initialTab = 'overview', theme, onClose }) {
   const [tab, setTab] = useState(initialTab);
   const dialog = useRef(null);
+  const close = useRef(onClose);
+  close.current = onClose;
   useEffect(() => { const previous = document.activeElement; dialog.current?.querySelector('button')?.focus(); return () => previous?.focus(); }, []);
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') close.current();
       if (e.key === 'Tab') {
         const nodes = [...dialog.current.querySelectorAll('button:not(:disabled), input:not(:disabled), a[href], iframe, [tabindex="0"]')].filter(n => n.getClientRects().length);
         const first=nodes[0], last=nodes.at(-1);
@@ -22,7 +24,7 @@ export default function StockModal({ sym, initialTab = 'overview', theme, onClos
     document.addEventListener('keydown', onKey);
     document.body.style.overflow = 'hidden';
     return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
