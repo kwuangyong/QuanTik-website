@@ -24,3 +24,6 @@ export const getJob = (id) => fetch(`${BASE}/quant/jobs/${id}`).then(j);
 export const jobImageUrl = (id) => `${BASE}/quant/jobs/${id}/image`;
 
 export const listModules = () => fetch(`${BASE}/quant/modules`).then(j);
+
+/** Read the last published scan; this GET never starts a quant job. */
+export const getLatestScan = (signal) => fetch(`${BASE}/scan/latest`, {signal, cache:'no-store'}).then(j);

@@ -3,11 +3,12 @@ from __future__ import annotations
 import copy, datetime as dt, hashlib, json, threading, time, uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 import adapters
+from scan_snapshot import load_published_scan
 
 OUT = Path(__file__).parent / 'out'
 OUT.mkdir(exist_ok=True)
@@ -22,6 +23,15 @@ NAMES = {m['id']:m for m in adapters.MODULES}
 class JobRequest(BaseModel):
     symbol: str = Field(min_length=1, max_length=5)
     modules: list[str] | None = None
+
+@app.get('/api/scan/latest')
+def latest_scan(response: Response):
+    """Read-only: the scheduled Python pipeline publishes the file separately."""
+    response.headers['Cache-Control'] = 'no-store'
+    try:
+        return load_published_scan()
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
 
 @app.get('/api/board')
 def board(group: str = 'ALL', exchange: str | None = None, sector: str | None = None):

@@ -2,6 +2,8 @@
 
 Dashboard React + FastAPI cho cổ phiếu Việt Nam, gồm tổng quan thị trường, bảng điện, nhóm ngành, theo dõi, workspace biểu đồ/Quant và báo cáo theo từng mã. Có chế độ sáng/tối, bố cục điện thoại và logo/favicon QuanTik. Toàn bộ chữ giao diện dùng IBM Plex Mono theo phong cách terminal; fallback monospace khi chưa tải được font.
 
+Trang **Quét toàn sàn** cần bấm **Kích hoạt kết quả** trước khi đọc và mở snapshot. Nút chỉ lấy bản đã công bố, không chạy lại Python. Giao diện dùng nền đen, các mảng xanh và cam theo standee. Xem [hướng dẫn nối kết quả vòng chạy 2 giờ và contract JSON](docs/scan-snapshot.md).
+
 ## Chạy trên máy
 
 ```bash
