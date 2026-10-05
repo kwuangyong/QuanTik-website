@@ -1,5 +1,19 @@
 # Tiến độ triển khai QuanTik
 
+## Mốc 05/10/2026: quét toàn sàn và màu theo standee
+
+Nhánh `feature/scan-activation-brand` bắt đầu từ main của fork sau khi PR #1 được merge.
+
+- Thêm trang Quét toàn sàn với nút kích hoạt trước khi đọc/hiện kết quả. GET `/api/scan/latest` chỉ đọc JSON có sẵn; không submit job hoặc rerun engine. Giữ kết quả khi đổi trang; reload đóng lại. Có bộ lọc, sắp xếp, metadata, cảnh báo cũ, lỗi/thử lại và chọn xem mẫu rõ ràng.
+- Thêm adapter `QUANTIK_SCAN_SNAPSHOT` cho file do vòng chạy Python công bố. Repo chưa có scheduler/nguồn kết quả của VPS; hướng dẫn nối và contract ở [scan-snapshot.md](scan-snapshot.md). Mẫu gồm 21 mã từ fixture, không giả lập 1.523 kết quả. Khuyến nghị, trạng thái đạt và các trường chưa có nguồn vẫn để trống.
+- Đổi palette sang nền đen, các mảng xanh rừng và vệt cam; giữ IBM Plex Mono, bảng/popup nền đặc và chế độ sáng.
+- Xác minh: 7 kiểm tra Node, 7 kiểm tra Python, build Vite và suite Chromium 1440/390 px đều đạt. Suite mới kiểm tra không fetch trước kích hoạt, GET-only/no job, bộ lọc, đổi trang giữ kết quả, reload về nút kích hoạt, lỗi đọc/refresh giữ bản cũ và xem mẫu theo yêu cầu. Các luồng bảng điện/chart/popup hiện có vẫn đạt. TradingView thật vẫn chưa kiểm chứng vì script bị chặn trong kiểm tra tự động.
+- Nút hiện là bước mở giao diện; Premium cần xác thực/quyền gói phía backend sau này. Chưa thu phí, chưa triển khai lên VPS hoặc domain thật.
+
+Ảnh giao diện: [trước kích hoạt](previews/scan-activation.jpg), [sau kích hoạt](previews/scan-results.jpg), [điện thoại](previews/scan-mobile.jpg).
+
+## Mốc 04/10/2026
+
 Ngày 04/10/2026 · Nhánh `design/quantik-dashboard` · [PR #1](https://github.com/kwuangyong/QuanTik-website/pull/1)
 
 Đã triển khai mốc giao diện và API mô phỏng của kế hoạch. Mốc dữ liệu thật còn phụ thuộc nguồn thị trường, mapping TradingView và pipeline Quant.
