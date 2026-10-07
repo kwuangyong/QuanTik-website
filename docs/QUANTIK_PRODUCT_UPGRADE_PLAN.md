@@ -66,9 +66,27 @@ Các mặc định này giúp viết code nhất quán, nhưng là đề xuất 
 1. Người dùng vào Bảng điện: thấy toàn danh mục và các nhóm cột đầy đủ, chỉ báo độ phủ/nguồn/thời điểm.
 2. Vào Quét toàn sàn: nút “Kích hoạt kết quả” mở snapshot đã công bố; GET không tạo job mới.
 3. Thấy hai khối 5 mã, thời điểm phân tích, tổng số mã đủ điều kiện xếp hạng và những mã thiếu dữ liệu được đếm riêng.
-4. Click mã: mở workspace chi tiết cùng `run_id`, giữ liên kết về đánh giá ở bảng scan.
-5. Xem kết luận ngắn, visual, điều kiện vào lệnh và các rủi ro; hover/chạm thuật ngữ để học ngay tại chỗ.
-6. “Phân tích lại mã” là thao tác riêng, có trạng thái job; kết quả mới không âm thầm ghi đè phân tích toàn sàn.
+4. Trong mỗi hàng kết quả scan, đặt nút **“Chạy Quant” ngay cạnh tên mã**. Bấm nút mở workspace đúng mã và bắt đầu job phân tích chi tiết; click tên mã thông thường chỉ mở chart/thông tin.
+5. Trên bảng điện, bấm tên mã mở popup có chart và thông tin cổ phiếu. **Cạnh chart, trong chính popup đó, có nút “Chạy Quant”**. Người dùng xem chart trước và bấm nút khi muốn chạy phân tích chi tiết.
+6. Hai nút cùng dùng một hành động chạy Quant và cùng hiển thị kết quả trong workspace của mã đó: tiến độ, báo cáo, visual, điều kiện giao dịch và rủi ro. Popup từ bảng điện không tự chạy Quant chỉ vì được mở.
+7. Khi cần chạy lại, dùng “Phân tích lại” có trạng thái job; kết quả job không âm thầm ghi đè phân tích toàn sàn.
+
+### 4.1 Hai điểm đặt nút đã được người dùng chỉ định
+
+| Điểm vào | Vị trí nút | Khi bấm | Nơi xem kết quả |
+| --- | --- | --- | --- |
+| Kết quả quét toàn sàn: cả khối nổi bật và thận trọng | Cùng ô tên mã, ngay cạnh ticker | Mở popup/workspace mã và khởi động phân tích Quant chi tiết | Khu vực Quant trong chính workspace mã |
+| Popup cổ phiếu mở từ bảng điện | Panel thông tin/Quant cạnh chart trên desktop | Giữ popup/chart, khởi động phân tích Quant cho mã đang mở | Panel Quant hoặc tab báo cáo trong cùng popup |
+
+Trên mobile panel xếp dưới chart để đọc được, nhưng nút vẫn thuộc popup cổ phiếu; không đưa người dùng sang trang khác chỉ để bắt đầu chạy.
+
+Hai vị trí là hai điểm vào của cùng tính năng, không phải hai chế độ/mô hình tính toán khác nhau. Nút mở kết quả toàn sàn đọc batch đã công bố; nút Chạy Quant từng mã là thao tác khởi động job chi tiết. Hai tác vụ giữ tên và trạng thái riêng.
+
+Hướng nối code: `ScanPage` truyền callback mã về `App` để mở `StockModal` với ý định chạy Quant một lần; `StockModal`/`ChartWorkspace` cung cấp nút chạy bên cạnh chart gọi cùng controller/job service (`startQuant`). API backend hiện có `POST /api/v1/quant/jobs`; không tạo endpoint chạy khác chỉ vì có hai nút.
+
+Yêu cầu trạng thái: chưa chạy → “Chạy Quant”; queued/running → tiến độ và nút disabled; succeeded → kết quả + “Phân tích lại”; failed → lý do + “Thử lại”. Đồng bộ theo owner/session và symbol: bấm nhanh hai lần hoặc từ hai điểm vào khi một job đang chạy phải gắn vào job hiện có, không enqueue hai job. Frontend controller dùng chung; kiểm tra tính idempotent/in-flight dedup ở backend, không chỉ khóa nút trong một component.
+
+Mở từ scan giữ `reference_run_id` để truy vết batch đầu vào. Điểm scan và điểm job một mã phải giữ nhãn scope riêng. Với mã trên bảng điện chưa đủ snapshot/OHLCV để backend hiện tại chạy job, vẫn có nút và giải thích điều kiện chưa đáp ứng; cần quyết định adapter dữ liệu trong PR code, không giả vờ đã chạy thành công hoặc giấu mã khỏi bảng điện.
 
 Khi có giá mới trong lúc mở báo cáo, hiển thị “Giá hiện tại” cạnh “Giá tại phân tích”; không di chuyển cone hoặc entry theo giá mới mà không có model run mới.
 
@@ -76,7 +94,7 @@ Khi có giá mới trong lúc mở báo cáo, hiển thị “Giá hiện tại�
 
 ### 5.1 Bố cục
 
-Desktop: header mã/doanh nghiệp/sàn + thời điểm; hàng KPI; lưới visual hai cột; kế hoạch giao dịch và nhận định bên dưới. Có nút mở toàn màn hình ở workspace hiện tại.
+Desktop: popup cổ phiếu có chart chính và panel thông tin/Quant cạnh chart, với nút “Chạy Quant” rõ ràng. Sau khi có kết quả: header mã/doanh nghiệp/sàn + thời điểm; hàng KPI; lưới visual hai cột; kế hoạch giao dịch và nhận định bên dưới hoặc trong tab báo cáo cùng workspace. Giữ chart truy cập được và nút mở toàn màn hình ở workspace hiện tại.
 
 Mobile: một cột, chart rộng ngang màn hình, không co cả dashboard 16:9 thành ảnh nhỏ. Font nội dung 14–16px; số liệu chính 20–28px; mức giá không chồng lên legend. Các kích thước là mục tiêu thiết kế cần QA.
 
@@ -347,7 +365,7 @@ Publication schedule lấy từ scheduler/config thật; bao gồm `schedule_kin
 | PR-0 — tài liệu | Plan này, quyết định còn mở | `docs/QUANTIK_PRODUCT_UPGRADE_PLAN.md` | Reviewer hiểu scope; không đổi runtime |
 | PR-1 — adapter + snapshot | 50 fields, null/units, presentation lúc scan, metadata, pin run | `backend/engine.py`, `quant_service.py`, `server.py`, `store.py` nếu cần, `src/api.js`, `scan.js` | Contract tests và snapshot cũ tương thích |
 | PR-2 — top 5 / bottom 5 | Endpoint highlights, selection rule và scan UI | Backend selection module mới; `ScanPage.jsx`, styles | Hai khối đúng nhãn, cùng run, không chạy model khi kích hoạt |
-| PR-3 — visual workspace | Chart JSON, factor matrix, decision/payoff/audit | `QuantPanel.jsx`, `AnalysisReport.jsx`, `ChartWorkspace.jsx`, visual components mới | Các visual có dữ liệu thật và empty state đúng |
+| PR-3 — visual workspace | Hai điểm đặt nút chạy cùng controller/job; chart JSON, factor matrix, decision/payoff/audit | `App.jsx`, `ScanPage.jsx`, `StockModal.jsx`, `QuantPanel.jsx`, `AnalysisReport.jsx`, `ChartWorkspace.jsx`, visual components mới | Nút cạnh mã scan và nút cạnh chart popup chạy đúng mã; job không trùng; visual và empty state đúng |
 | PR-4 — glossary | Schema nội dung và term interaction | `content/metrics.json`, `glossary.js`, `TermHint.jsx`, `AnnotatedText.jsx`, styles | Ví dụ/ngưỡng đầy đủ, keyboard/mobile đúng |
 | PR-5 — bảng điện | Full listing, đủ cột, independence, loading/cache/virtualization | `market.py`, `server.py`, `api.js`, `market.js`, `useMarket.js`, `PriceBoard*.jsx` | Không cắt 500; lần refresh thứ hai đúng; scan lỗi không chặn quote |
 
@@ -364,6 +382,8 @@ Không chỉnh quant core/scoring chỉ để phục vụ UI. Nếu phải sửa
 - [ ] Pin run_id cho highlights/detail/OHLCV; test latest đổi giữa lượt đọc.
 - [ ] Mở cột scan/preset theo mapping; tooltip đúng unit và scope.
 - [ ] Dựng workspace chart responsive, factor names cố định, empty states.
+- [ ] Đặt “Chạy Quant” cạnh tên mã ở cả hai khối scan và trong panel cạnh chart của popup bảng điện; dùng cùng action/controller.
+- [ ] Mở popup từ bảng điện chỉ tải chart/thông tin; bấm Quant từ scan khởi động đúng một job và mở vùng báo cáo trong workspace đó.
 - [ ] Bổ sung glossary examples/conditions, phân biệt reference với pipeline config.
 - [ ] Tách bảng điện khỏi scan; bỏ trần 500; partial load và stale rõ.
 - [ ] Kiểm tra hiệu năng và accessibility với danh mục đủ lớn.
@@ -381,6 +401,8 @@ Với nguồn lực người dùng dưới 15 giờ/tuần, nên review từng P
 | Nhóm | Ca kiểm thử bắt buộc | Kết quả mong đợi |
 | --- | --- | --- |
 | Xếp hạng | Nhiều mã, tie score, net null, đủ 10 eligible | Tối đa 5/5; ổn định; không trùng; cùng run |
+| Điểm vào Quant | Nút cạnh mã scan và nút trong popup chart | Cùng action/service, đúng symbol; mở từ scan chạy một lần, mở chart thông thường không tự chạy |
+| Job trùng | Double click và bấm hai điểm vào khi đang chạy | Cùng owner/symbol gắn vào job đang chạy, không tạo hai job |
 | Khuyến nghị | Điểm 82 + AVOID; tất cả mã gate fail | Không hiện BUY; banner chưa có setup mua; giữ lý do |
 | Dữ liệu lỗi | Failed analysis, DQ FAIL, score null/NaN | Excluded đúng; không lọt bottom vì dữ liệu thiếu |
 | Ít dữ liệu | 0, 3, 7 mã; tất cả AVOID | Dòng thật, empty state từng khối, không bịa cơ hội |
