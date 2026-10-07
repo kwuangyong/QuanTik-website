@@ -4,6 +4,12 @@
 **Repo đích:** `kappyphm/quantik-react` · **Nhánh đích:** `main`.  
 **Đầu ra lượt này:** plan Markdown và PR tài liệu. Người dùng đã chọn “Plan trước”; các checkbox bên dưới là công việc tương lai, không phải tính năng đã hoàn thành.
 
+## 0. Giữ UI/UX hiện tại của repo
+
+**Ràng buộc đã xác nhận với người dùng:** giữ UI/UX và cấu trúc thiết kế hiện tại của QuanTik trong repo. Demo tại https://quantik-product-demo.quantlong21.chatgpt.site là bản thử độc lập để review vị trí nút, popup, visual và luồng tương tác. Không đưa layout, stylesheet hay ứng dụng demo vào repo như một lần thay giao diện.
+
+Các PR implementation sẽ bổ sung tính năng vào component và design system đang có. Màu, typography, navigation, spacing và layout theo phiên bản repo tại thời điểm triển khai; cần kiểm tra giao diện hiện tại trước khi sửa code.
+
 ## 1. Mục tiêu sản phẩm
 
 Giúp nhà đầu tư trả lời bốn câu hỏi: thị trường đang diễn ra thế nào; mã nào đáng xem hoặc cần thận trọng; vì sao hệ thống đánh giá như vậy; điều kiện nào khiến đánh giá không còn phù hợp.
