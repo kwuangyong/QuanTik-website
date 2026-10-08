@@ -9,29 +9,32 @@ from pathlib import Path
 
 # Canonical demo catalog shared with React. Replace this adapter for a real feed.
 import copy, json
+import os
+from market_snapshot import load_snapshot
 SAMPLE = json.loads((Path(__file__).resolve().parents[1] / "shared/market-demo.json").read_text())
 MODE = "demo"
 DATA_VERSION = SAMPLE["version"]
-MODEL_VERSION = "placeholder-v2"
+MODEL_VERSION = "placeholder-v3-visuals"
 
 def load_board(group: str = "ALL", exchange: str | None = None, sector: str | None = None) -> dict:
-    data = copy.deepcopy(SAMPLE)
+    configured = os.environ.get('QUANTIK_MARKET_SNAPSHOT')
+    data = load_snapshot(configured) if configured else copy.deepcopy(SAMPLE)
     chosen_exchange = exchange or (group if group in {"HOSE", "HNX", "UPCOM"} else None)
     data["instruments"] = [i for i in data["instruments"] if (not chosen_exchange or i["exchange"] == chosen_exchange) and (not sector or i["sectorId"] == sector)]
     syms = {i["symbol"] for i in data["instruments"]}
     data["quotes"] = [q for q in data["quotes"] if q["symbol"] in syms]
     return data
 
-def sector_summary(exchange: str | None = None, sector: str | None = None) -> list[dict]:
-    data = load_board(exchange=exchange, sector=sector)
+def sector_summary(exchange: str | None = None, sector: str | None = None, snapshot: dict | None = None) -> list[dict]:
+    data = snapshot if snapshot is not None else load_board(exchange=exchange, sector=sector)
     result = []
-    for s in SAMPLE["sectors"]:
+    for s in data["sectors"]:
         syms = {i["symbol"] for i in data["instruments"] if i["sectorId"] == s["id"]}
         qs = [q for q in data["quotes"] if q["symbol"] in syms]
         if not qs: continue
         returns = [q["price"] / q["ref"] - 1 for q in qs if q.get("price") is not None and q.get("ref", 0) > 0]
         values = [q["value"] for q in qs if q.get("value") is not None]
-        result.append({"sectorId": s["id"], "name": s["name"], "count": len(qs), "valid": len(returns), "mean": sum(returns)/len(returns) if returns else None, "value": sum(values) if values else None, "valueCoverage": len(values), "method": "equal-weight-return", "mode": "demo"})
+        result.append({"sectorId": s["id"], "name": s["name"], "count": len(syms), "valid": len(returns), "mean": sum(returns)/len(returns) if returns else None, "value": sum(values) if values else None, "valueCoverage": len(values), "method": "equal-weight-return", "mode": data['mode']})
     return result
 
 # ---- 2. Pipeline quant ----------------------------------------------------
@@ -74,6 +77,24 @@ def summarize(ctx: dict) -> dict:
 def metric_results(ctx: dict) -> list[dict]:
     definitions = json.loads((Path(__file__).resolve().parents[1] / "src/content/metrics.json").read_text())
     return [{"id": m["id"], "value": None, "unit": "", "status": "not_computed", "methodId": m["methodId"], "provenance": "reference-only"} for m in definitions]
+
+def research_payload(ctx: dict) -> dict | None:
+    """Replace with precomputed quant_visuals aggregates from the real pipeline.
+
+    The current adapter is explicitly demo. Do not derive live simulation/regime
+    charts from scores or summary metrics when raw inputs were not preserved.
+    """
+    if MODE != 'demo': return ctx.get('research')
+    data = json.loads((Path(__file__).resolve().parents[1] / 'shared/research-demo.json').read_text(encoding='utf-8'))
+    data['symbol'] = ctx['symbol']
+    price = ctx['quote']['price']
+    if price is None or price <= 0:
+        data['cone'] = []; data['regime'] = []
+        return data
+    for point in data['cone']:
+        for key in ['p05','p25','p50','p75','p95']: point[key] *= price
+    for point in data['regime']: point['price'] *= price
+    return data
 
 
 def render_image(ctx: dict, path: Path) -> None:

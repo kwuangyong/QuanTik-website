@@ -81,3 +81,7 @@ npm run preview
 Frontend build vào `dist/`. Khi triển khai riêng frontend/backend, đặt `VITE_API_BASE=https://<api-host>/api` trước build và cập nhật CORS trong `backend/server.py`. Hoặc reverse proxy `/api` cùng domain tới FastAPI. `vite.config.js` chỉ proxy khi phát triển. Backend cần cả thư mục `shared/` và `src/content/` để đọc mẫu/định nghĩa; đóng gói toàn bộ repo khi chạy bản demo.
 
 Kế hoạch gốc: [docs/implementation-plan.md](docs/implementation-plan.md). Phạm vi đã làm và phần cần nguồn thật: [docs/implementation-status.md](docs/implementation-status.md). Chưa triển khai production.
+
+## Nâng cấp sản phẩm theo plan 08/10/2026
+
+Scan 5 nổi bật/5 thận trọng, hai điểm chạy Quant, visual có cấu trúc, tooltip năm phần và bảng điện đầy đủ nhóm cột đã được tích hợp trên UI/UX hiện tại. Xem [hợp đồng và phạm vi thực/demo](docs/PRODUCT_UPGRADE_IMPLEMENTATION.md). Nguồn thật cần cấu hình snapshot/adapter; giao diện không tự biến fixture thành dữ liệu toàn sàn.

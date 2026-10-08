@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createServer} from 'vite';
 import katex from 'katex';
-const server=await createServer({server:{middlewareMode:true},appType:'custom'});
+const server=await createServer({server:{middlewareMode:true,hmr:false},appType:'custom'});
 const {glossary}=await server.ssrLoadModule('/src/content/glossary.js');
 const {normalizeSnapshot,sectorSummary,fmt,priceClass,change}=await server.ssrLoadModule('/src/market.js');
 after(()=>server.close());

@@ -2,12 +2,16 @@
 from __future__ import annotations
 import datetime as dt
 import os
+import json
+import math
 from pathlib import Path
-from pydantic import AwareDatetime, BaseModel, Field, StrictBool, StrictInt, ValidationError
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictBool, StrictInt, ValidationError, model_validator
 
 DEMO_PATH = Path(__file__).resolve().parents[1] / 'shared/scan-demo.json'
+FIELDS = json.loads((DEMO_PATH.parent / 'scan-fields.json').read_text(encoding='utf-8'))
 
 class ScanRow(BaseModel):
+    model_config = ConfigDict(extra='allow')
     symbol: str = Field(pattern=r'^[A-Z0-9]{3,5}$')
     name: str
     exchange: str
@@ -19,6 +23,24 @@ class ScanRow(BaseModel):
     rating: str | None = None
     holdingSessions: StrictInt | None = Field(default=None, ge=0)
     indexTrend: str | None = None
+
+    @model_validator(mode='after')
+    def metric_units(self):
+        for field in FIELDS:
+            value = getattr(self, field['key'], None)
+            if value is None: continue
+            if field['format'] in {'pct', 'number', 'price', 'billions'}:
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                    raise ValueError('Numeric metrics must be finite numbers or null')
+                if field['format'] == 'price' and value <= 0: raise ValueError('Prices must be positive')
+            elif field['key'] == 'gate_pass':
+                if not isinstance(value, bool): raise ValueError('Gate must be a boolean')
+            elif field['key'] in {'gate_reasons', 'data_quality_flags'}:
+                if not isinstance(value,str) and not (isinstance(value,list) and all(isinstance(v,str) for v in value)):
+                    raise ValueError('Reasons must be strings or string arrays')
+            elif not isinstance(value, str):
+                raise ValueError('Labels must be strings or reason arrays')
+        return self
 
 class ScanSnapshot(BaseModel):
     runId: str = Field(min_length=1)
