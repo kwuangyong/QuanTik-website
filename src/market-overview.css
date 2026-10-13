@@ -1,0 +1,2 @@
+.market-view-toolbar{padding:0 0 14px}.market-view-toolbar .tab[aria-pressed=true]{background:var(--amber-soft);color:var(--amber)}
+@media(min-width:1201px){.market-summary-panels{grid-template-columns:1.5fr 1fr}}
