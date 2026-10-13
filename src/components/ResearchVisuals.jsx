@@ -45,6 +45,7 @@ function Factors({data}){
 }
 export default function ResearchVisuals({sym,job}){
  const [view,setView]=useState('all');
+ if(job.analysisStatus==='screened_out')return null;
  const research=normalizeResearch(job.research,sym);
  const last=data=>view==='recent'?data.slice(-10):data;
  const levels=job.summary,trade=levels?payoff(levels.entry,levels.stop,levels.tp2):null;

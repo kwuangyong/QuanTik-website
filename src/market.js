@@ -5,6 +5,12 @@ export const demoSnapshot=sample;
 let currentInstruments=new Map(instruments.map(i=>[i.symbol,i]));
 let currentSectors=new Map(sectors.map(s=>[s.id,s]));
 export const instrumentFor=sym=>currentInstruments.get(sym);
+export function rememberInstrument(detail){
+ const symbol=String(detail?.symbol||'').toUpperCase(),exchange=String(detail?.exchange||'').toUpperCase();
+ if(!/^[A-Z][A-Z0-9]{2,4}$/.test(symbol)||!['HOSE','HNX','UPCOM'].includes(exchange))return;
+ const previous=currentInstruments.get(symbol);
+ currentInstruments.set(symbol,{...previous,symbol,name:detail.name||previous?.name||symbol,exchange,tvSymbol:`${exchange}:${symbol}`});
+}
 export const sectorName=id=>currentSectors.get(id)?.name || 'Chưa xác định';
 export const fmt=(v,d=2)=>v==null || v==='' || typeof v==='boolean'||!Number.isFinite(Number(v))?'—':Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 export const priceClass=(v,r)=>!Number.isFinite(v)||v<=0?'dim':Number.isFinite(r.ceil)&&r.ceil>0&&v>=r.ceil?'ceil':Number.isFinite(r.floor)&&r.floor>0&&v<=r.floor?'floor':!Number.isFinite(r.ref)||r.ref<=0?'dim':v>r.ref?'up':v<r.ref?'down':'ref';
@@ -68,7 +74,7 @@ export function normalizeLiveBoard(pages, scanBySymbol) {
         symbol, name: scan.name || symbol, exchange,
         sectorId: scan.sector || 'unknown', active: true,
       };
-      if (exchange === 'HOSE') inst.tvSymbol = `HOSE:${symbol}`;
+      if (['HOSE','HNX','UPCOM'].includes(String(exchange).toUpperCase())) inst.tvSymbol = `${String(exchange).toUpperCase()}:${symbol}`;
       insts.push(inst);
       quotes.push({
         symbol, ref,
