@@ -1,0 +1,1 @@
+.tradingview-open-link{display:block;padding:8px 0;color:var(--amber);font-size:11px;text-align:right}.chart-main:has(.tradingview-open-link){display:flex;flex-direction:column}.chart-main:has(.tradingview-open-link)>.workspace-chart{flex:1;height:auto;min-height:320px}

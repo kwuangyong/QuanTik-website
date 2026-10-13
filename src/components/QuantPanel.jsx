@@ -9,13 +9,14 @@ import {fmt} from '../market.js';
 import QuantModules from './QuantModules.jsx';
 import QuantSynthesis from './QuantSynthesis.jsx';
 import QuantProgress from './QuantProgress.jsx';
+import '../quant-result.css';
 export default function QuantPanel({sym,autoRun=false,expanded=false,onExpand}){
  const [mods,setMods]=useState([]),[failed,setFailed]=useState(false),[selected,setSelected]=useState([]),[imageError,setImageError]=useState(false);
  const {job,error,run,preview}=useQuantJob(sym);
  useEffect(()=>{let alive=true;listModules().then(m=>{if(alive){setMods(m);setSelected(m.map(x=>x.id));}}).catch(()=>{if(alive)setFailed(true);});return()=>{alive=false;};},[]);
  useEffect(()=>{if(autoRun)resumeQuantAnalysis(sym);},[sym,autoRun]);
  useEffect(()=>setImageError(false),[job?.id]);
- const running=job?.status==='queued'||job?.status==='running',s=job?.summary;
+ const running=job?.status==='queued'||job?.status==='running',screenedOut=job?.analysisStatus==='screened_out',s=screenedOut?null:job?.summary;
  return <>
  {onExpand&&<button className="btn ghost quant-expand" onClick={()=>onExpand(sym)}>Mở trang Quant toàn màn hình ↗</button>}
  {!job&&<section className="card quant-controls"><h3>Phân tích Quant {sym}</h3><p className="dim">Phân tích xu hướng, dòng tiền và rủi ro theo từng mô hình.</p>
@@ -24,6 +25,7 @@ export default function QuantPanel({sym,autoRun=false,expanded=false,onExpand}){
  <div className="quant-actions"><button className="btn" disabled={running||!selected.length} onClick={()=>run(sym,selected)}>Chạy Quant {sym}</button><button className="btn ghost" onClick={()=>preview(sym)}>Xem kết quả mẫu</button></div></section>}
  {running&&<section className="card" role="status"><h3>Đang chạy {sym}</h3><p>{job.phaseLabel||'Đang chờ worker lấy dữ liệu và chạy pipeline.'}</p><QuantProgress job={job}/><progress max="100" value={job.progress_pct||0} aria-label="Tiến độ phân tích Quant"/><div className="mods">{(job.modules||[]).map(m=><div className={`mod ${m.state}`} key={m.id}><b><AnnotatedText text={m.name}/></b><span className="st">{m.state==='done'?'✓ Hoàn tất':m.state==='running'?'Đang chạy':'Chờ'}</span></div>)}</div></section>}
  {job?.status==='error'&&<section className="card"><p role="alert" className="err">{error}</p><div className="quant-actions"><button className="btn ghost" onClick={()=>run(sym,selected.length?selected:null)}>Thử lại</button><button className="btn ghost" onClick={()=>preview(sym)}>Xem kết quả mẫu</button></div></section>}
+ {screenedOut&&<section className="card quant-screened-out" role="status"><h3>Thanh khoản chưa đạt điều kiện</h3><p>Mã {sym} chưa đạt điều kiện thanh khoản để đánh giá cơ hội giao dịch. Xem các chỉ số thanh khoản bên dưới.</p></section>}
  {job?.status==='done'&&<div className="quant-result">
  <div className="ctl"><span className="dim">Hoàn tất pipeline Quant</span><span style={{flex:1}}/><button className="btn ghost" onClick={()=>job.local?preview(sym):run(sym,selected.length?selected:null)}>Chạy lại</button></div>
  <div className="info-banner">{job.mode==='demo'?'Kết quả mô phỏng':job.mode==='live'||job.mode==='eod'?'Kết quả từ API':'Nguồn mô hình chưa xác nhận'} · {job.asOf?new Date(job.asOf).toLocaleString('vi-VN'):'Chưa có thời điểm dữ liệu'}{job.local&&' · Mẫu tĩnh, không chạy mô hình'}</div>
