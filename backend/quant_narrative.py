@@ -15,7 +15,7 @@ GUIDES = {
         'Thanh khoản trả lời câu hỏi có thể mua bán một lượng cổ phiếu hợp lý mà ít làm thay đổi giá hay không. Nó khác với câu hỏi cổ phiếu sẽ tăng hay giảm.',
         'Cần ít nhất 20 phiên giá và khối lượng, cùng quy tắc lô giao dịch của sàn. Giá trị giao dịch được xấp xỉ bằng giá đóng cửa nhân số cổ phiếu giao dịch; cần xét cả những phiên không có giao dịch.',
         'Giá trị giao dịch bình quân cao thường cho thấy thị trường hấp thụ lệnh tốt hơn, nhưng một vài phiên đột biến có thể kéo trung bình lên. Hệ thống còn hạn chế lượng mua theo tỷ lệ tham gia vào thanh khoản và quy tắc lô.',
-        'Thanh khoản ảnh hưởng chi phí trượt giá và quy mô vị thế; tín hiệu tăng không vượt qua được cổng thanh khoản bị chặn.'),
+        'Phân tích riêng một mã vẫn chạy khi thanh khoản thấp; kết quả thanh khoản giúp đánh giá trượt giá, quy mô vị thế và khả năng giao dịch. Khi quét toàn sàn, hệ thống loại mã không đạt ngưỡng thanh khoản.'),
     'dist': (
         'Phân phối lợi suất là hình dạng của các mức tăng giảm từng ngày. Độ lệch cho biết hai phía tăng và giảm có đối xứng không; excess kurtosis đo mức nhạy của phân phối với các quan sát xa trung bình, so với mốc phân phối chuẩn bằng 0.',
         'Cần tối thiểu 30 lợi suất tính từ hai giá đóng cửa liên tiếp, cùng đơn vị và không bị giá sai hoặc điều chỉnh doanh nghiệp làm méo. Kiểm định cần đủ mẫu; không coi một cửa sổ ngắn là đại diện cho mọi trạng thái thị trường.',

@@ -281,7 +281,7 @@ def scan_all(progress, symbols=None, checkpoint_dir: Path | None = None, univers
 
 def _quant_with_frames(symbol, frame, index, exchange, progress, output_dir: Path,
                        include_backtest=True, source_mode="live_fetch"):
-    from quant_engine.quant import QuantPipeline, ScreenerBridge
+    from quant_engine.quant import SingleSymbolQuantPipeline as QuantPipeline, ScreenerBridge
     from quant_engine.quant_visuals import generate_quant_visuals
 
     progress("models", 35, "Đang chạy các mô hình định lượng")
