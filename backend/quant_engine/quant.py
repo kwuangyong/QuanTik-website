@@ -2580,11 +2580,14 @@ class MetaLabelEngine:
 # ORCHESTRATOR 
 
 class QuantPipeline:
+    ENFORCE_LIQUIDITY_GATE = True
+
     def __init__(self, cfg=None):
         self.cfg = cfg or CFG
         log.info("QuantPipeline V7 VN initialized (directional alpha + regime routing + meta-label + risk)")
 
     def analyze(self, sym, df, sig=None, scores=None, idx_df=None, vni_regime='NEUTRAL', exchange='HOSE'):
+        """Run models; only scan callers use liquidity as an early exclusion."""
         df = _completed_daily_bars(df)
         if df is None or len(df)<30: return {'symbol':sym, 'error':'Insufficient data'}
         p = df['close']
@@ -2601,7 +2604,7 @@ class QuantPipeline:
             r['error'] = 'Data quality failed: ' + ', '.join(r['data_quality']['flags'])
             return r
         r['liquidity'] = LiquidityEngine.analyze(df, exchange)
-        if not r['liquidity'].get('pass', False):
+        if self.ENFORCE_LIQUIDITY_GATE and not r['liquidity'].get('pass', False):
             r['error'] = 'Liquidity gate failed'
             return r
         log.info(f"  [{sym}] M1: Distribution..."); r['dist'] = DistributionAnalyzer.full_test(p)
@@ -2639,6 +2642,11 @@ class QuantPipeline:
         return r
 
     def batch(self, data, scr_df=None, idx_df=None, exchange_map=None, progress_callback=None):
+        """Scan policy is the default, even when the scan contains just one symbol.
+
+        SingleSymbolQuantPipeline disables the early liquidity exclusion;
+        measured liquidity still feeds costs, position sizing and execution risk.
+        """
         exchange_map = exchange_map or {}
         data = {sym: _completed_daily_bars(df) for sym, df in data.items()}
         idx_df = _completed_daily_bars(idx_df)
@@ -3171,6 +3179,11 @@ class QuantPipeline:
             for r in reports if 'error' not in r and final_action(r) in BUY_ACTIONS
         }
         return summary
+
+class SingleSymbolQuantPipeline(QuantPipeline):
+    """Interactive analysis keeps liquidity diagnostics without scan exclusion."""
+    ENFORCE_LIQUIDITY_GATE = False
+
 
 # FORECAST LOGGER
 

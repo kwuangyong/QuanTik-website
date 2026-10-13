@@ -37,7 +37,7 @@ def _json(value):
 @lru_cache(maxsize=64)
 def analyze_symbol(symbol: str, session: str | None = None) -> dict:
     """Compute once per symbol/day. Do not ship raw Monte Carlo paths to the browser."""
-    from quant_engine.quant import QuantPipeline, ScreenerBridge
+    from quant_engine.quant import SingleSymbolQuantPipeline as QuantPipeline, ScreenerBridge
     symbol = symbol.upper().strip()
     bridge = ScreenerBridge()
     data = bridge.fetch_ohlcv([symbol], days=252)
@@ -132,6 +132,8 @@ def present_report(report: dict, prices) -> dict:
     }
     modules = module_reports(report, prices)
     return _json({
+        'analysis_status': 'completed',
+        'liquidity': report.get('liquidity', {}),
         'module_reports': modules,
         'synthesis': synthesize(modules),
         'flow': report.get('flow', {}),
